@@ -1,0 +1,57 @@
+[project]
+name = "terra-dok-leads"
+version = "1.0.0"
+description = "Industrial lead generation tool for TERRA DOK premium wooden windows"
+requires-python = ">=3.10"
+dependencies = [
+    "aiohttp>=3.9.0",
+    "polars>=0.20.0",
+    "aiosqlite>=0.19.0",
+    "beautifulsoup4>=4.12.0",
+    "lxml>=4.9.0",
+    "python-dotenv>=1.0.0",
+    "tenacity>=8.2.0",
+    "scrapy>=2.11.0",
+    "selenium>=4.15.0",
+    "undetected-chromedriver>=3.5.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.5.0",
+    "mypy>=1.11.0",
+]
+
+[project.scripts]
+terra-dok = "main:main_cli"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "ARG", "C4"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*.py" = ["ARG001"]
+"src/discovery/catalogs.py" = ["ARG002"]
+"src/discovery/geo_services.py" = ["ARG002"]
+"src/enrichment/engine.py" = ["ARG002"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+strict_optional = true

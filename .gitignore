@@ -1,0 +1,138 @@
+# ===========================
+# СИСТЕМНЫЕ ФАЙЛЫ
+# ===========================
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ===========================
+# ФАЙЛЫ ОКРУЖЕНИЯ И СЕКРЕТЫ
+# ===========================
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+credentials/
+config/secrets.yml
+venv/
+
+# ===========================
+# ЗАВИСИМОСТИ
+# ===========================
+node_modules/
+vendor/
+bower_components/
+jspm_packages/
+.terraform/
+*.egg-info/
+Pipfile.lock
+poetry.lock
+
+# ===========================
+# СБОРКА И КОМПИЛЯЦИЯ
+# ===========================
+dist/
+build/
+out/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+*.class
+*.pyc
+__pycache__/
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ===========================
+# IDE И РЕДАКТОРЫ
+# ===========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# ===========================
+# ЛОГИ И ВРЕМЕННЫЕ ФАЙЛЫ
+# ===========================
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+tmp/
+temp/
+.cache/
+
+# ===========================
+# БАЗЫ ДАННЫХ
+# ===========================
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+dump.rdb
+*.mdb
+
+# ===========================
+# ФРОНТЕНД
+# ===========================
+coverage/
+.nyc_output/
+.parcel-cache/
+.next/
+out/
+.sass-cache/
+.stylelintcache
+
+# ===========================
+# DOCKER
+# ===========================
+docker-compose.override.yml
+
+# ===========================
+# ДОКУМЕНТАЦИЯ
+# ===========================
+*.pdf
+*.doc
+*.docx
+*.ppt
+*.pptx
+
+# ===========================
+# АРХИВЫ
+# ===========================
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# ===========================
+# ОСОБЫЕ СЛУЧАИ
+# ===========================
+# Игнорировать всё в папке, кроме .gitkeep
+uploads/*
+!uploads/.gitkeep
+
+# Игнорировать все .log, кроме important.log
+*.log
+!important.log
+
+models/
