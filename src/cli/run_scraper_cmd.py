@@ -34,7 +34,8 @@ def run_scraper_cmd(args: argparse.Namespace) -> None:
 
     import twisted.internet.asyncioreactor
 
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     twisted.internet.asyncioreactor.install()
 
     from scrapy.crawler import CrawlerProcess
