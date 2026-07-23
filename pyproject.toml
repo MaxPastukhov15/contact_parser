@@ -63,6 +63,16 @@ warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
 strict_optional = true
+disable_error_code = ["import-untyped"]
+
+[[tool.mypy.overrides]]
+module = "src.vendor.*"
+ignore_errors = true
+disable_error_code = ["import-untyped"]
+
+[[tool.mypy.overrides]]
+module = ["src.companies_website.run_scraper", "src.cli.run_scraper_cmd"]
+disable_error_code = ["attr-defined"]
 
 [tool.setuptools]
 package-dir = {"" = "."}

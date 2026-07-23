@@ -8,8 +8,7 @@ def log_lifecycle():
             tag = type(self).__name__
             log = self.logger
             arg_str = ", ".join(
-                [repr(a)[:100] for a in args]
-                + [f"{k}={repr(v)[:100]}" for k, v in kwargs.items()]
+                [repr(a)[:100] for a in args] + [f"{k}={repr(v)[:100]}" for k, v in kwargs.items()]
             )
             log.info(f"[{tag}] -> {func.__name__}({arg_str})")
             try:
@@ -19,5 +18,7 @@ def log_lifecycle():
                 raise
             log.info(f"[{tag}] <- {func.__name__} -> {repr(result)[:200]}")
             return result
+
         return wrapper
+
     return decorator

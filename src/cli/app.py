@@ -6,11 +6,13 @@ Provides two commands:
 
 Entry point is registered in pyproject.toml as ``terra-dok``.
 """
+
 import argparse
 import sys
 
 
-def main():
+def main() -> None:
+    """Parse CLI arguments and dispatch to the appropriate command."""
     parser = argparse.ArgumentParser(
         prog="terra-dok",
         description="Contact parser for B2B lead generation",
@@ -20,36 +22,48 @@ def main():
     # ── scrape-2gis ────────────────────────────────────────
     p2gis = sub.add_parser(
         "scrape-2gis",
-        help="Parse 2GIS via Chrome → CSV → (optional) contacts pipeline",
+        help="Parse 2GIS via Chrome -> CSV -> (optional) contacts pipeline",
     )
     p2gis.add_argument(
-        "-u", "--urls",
-        nargs="+", required=True,
+        "-u",
+        "--urls",
+        nargs="+",
+        required=True,
         help="2GIS search result URL(s)",
     )
     p2gis.add_argument(
-        "-o", "--output-dir", default=None,
+        "-o",
+        "--output-dir",
+        default=None,
         help="Output directory for CSV (default: maps_data/parsed_2gis/)",
     )
     p2gis.add_argument(
-        "-f", "--format",
-        choices=["csv", "xlsx", "json"], default="csv",
+        "-f",
+        "--format",
+        choices=["csv", "xlsx", "json"],
+        default="csv",
         help="Output file format (default: csv)",
     )
     p2gis.add_argument(
-        "-n", "--name", default=None,
+        "-n",
+        "--name",
+        default=None,
         help="Output filename without extension (default: result)",
     )
     p2gis.add_argument(
-        "--headless", action="store_true",
+        "--headless",
+        action="store_true",
         help="Run Chrome in headless mode",
     )
     p2gis.add_argument(
-        "--max-records", type=int, default=1000,
+        "--max-records",
+        type=int,
+        default=1000,
         help="Max records per URL (default: 1000)",
     )
     p2gis.add_argument(
-        "--pipe", action="store_true",
+        "--pipe",
+        action="store_true",
         help="Run contact enrichment pipeline after parsing",
     )
 
@@ -59,7 +73,8 @@ def main():
         help="Scrapy spider for company websites",
     )
     p_scraper.add_argument(
-        "--file", default=None,
+        "--file",
+        default=None,
         help="Path to contacts CSV (default: maps_data/contacts/final_2gis.csv)",
     )
 
@@ -71,8 +86,10 @@ def main():
 
     if args.command == "scrape-2gis":
         from src.cli.scrape_2gis import run_scrape_2gis
+
         run_scrape_2gis(args)
 
     elif args.command == "run-scraper":
         from src.cli.run_scraper_cmd import run_scraper_cmd
+
         run_scraper_cmd(args)

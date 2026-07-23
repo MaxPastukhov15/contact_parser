@@ -6,7 +6,7 @@ def extract_address(text: str, logger) -> str | None:
         r"(?:г\.|город|ул\.|улица|пр\-|проспект|обл\.|область)"
         r"\s?[А-Яа-я0-9\s\.,№\-]+"
     )
-    addresses = re.findall(address_pattern, text)
+    addresses: list[str] = re.findall(address_pattern, text)
     if addresses:
         logger.debug(f"Адрес найден: {addresses[0].strip()}")
         return addresses[0].strip()

@@ -1,17 +1,12 @@
 import logging.config
 
-import pythonjsonlogger
-
-
-import logging.config
-
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
         "print": {
-            "format": "[%(asctime)s] %(levelname)-8s [%(name)s]: %(message)s", 
-            "datefmt": "%H:%M:%S"
+            "format": "[%(asctime)s] %(levelname)-8s [%(name)s]: %(message)s",
+            "datefmt": "%H:%M:%S",
         },
     },
     "handlers": {
@@ -24,7 +19,7 @@ LOGGING = {
     "loggers": {
         "": {
             "handlers": ["console"],
-            "level": "INFO", 
+            "level": "INFO",
         },
         "terra_doc": {
             "handlers": ["console"],

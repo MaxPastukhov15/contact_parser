@@ -7,11 +7,16 @@ Optionally runs the contact enrichment pipeline (``--pipe``).
 The vendor parser is called via direct Python import (sys.argv injection),
 not subprocess, to keep everything in a single process.
 """
+
+import argparse
+import logging
 import sys
 from pathlib import Path
 
+log = logging.getLogger(__name__)
 
-def _get_output_dir(args) -> Path:
+
+def _get_output_dir(args: argparse.Namespace) -> Path:
     """Resolve output directory from args or fall back to default."""
     if args.output_dir:
         return Path(args.output_dir)
@@ -19,7 +24,7 @@ def _get_output_dir(args) -> Path:
     return base / "maps_data" / "parsed_2gis"
 
 
-def run_scrape_2gis(args):
+def run_scrape_2gis(args: argparse.Namespace) -> None:
     """Run 2GIS parser and optionally the enrichment pipeline.
 
     Steps:
@@ -30,9 +35,10 @@ def run_scrape_2gis(args):
 
     Args:
         args: Parsed argparse namespace from ``terra-dok scrape-2gis``.
+
     """
-    from src.vendor.parser2gis.main import parse_arguments
     from src.vendor.parser2gis.cli import cli_app
+    from src.vendor.parser2gis.main import parse_arguments
 
     output_dir = _get_output_dir(args)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -42,9 +48,12 @@ def run_scrape_2gis(args):
     # Build sys.argv for the vendor parser2gis argparse
     argv = [
         "parser-2gis",
-        "-i", *args.urls,
-        "-o", str(output_file),
-        "-f", args.format,
+        "-i",
+        *args.urls,
+        "-o",
+        str(output_file),
+        "-f",
+        args.format,
     ]
     if args.headless:
         argv += ["--chrome.headless", "yes"]
@@ -61,8 +70,9 @@ def run_scrape_2gis(args):
 
     # Optional enrichment pipeline
     if args.pipe:
-        print("[PIPE] Running contact enrichment pipeline...")
+        log.info("Running contact enrichment pipeline...")
         from src.pipelines.parser2gis_pipe import Parser2GISPipe
+
         Parser2GISPipe(data_dir=output_dir).run()
 
-    print("[DONE] 2GIS scraping completed.")
+    log.info("2GIS scraping completed.")
