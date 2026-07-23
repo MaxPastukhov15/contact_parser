@@ -27,7 +27,7 @@ maps_data/
 # ЗАВИСИМОСТИ
 # ===========================
 node_modules/
-vendor/
+
 bower_components/
 jspm_packages/
 .terraform/
