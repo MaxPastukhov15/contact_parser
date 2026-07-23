@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 import scrapy
 from scrapy.http import Response
 
-from src.items import ContactItem
+from src.companies_website.items import ContactItem
 
 logger = logging.getLogger(__name__)
 

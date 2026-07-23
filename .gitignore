@@ -21,6 +21,7 @@ secrets/
 credentials/
 config/secrets.yml
 venv/
+maps_data/
 
 # ===========================
 # ЗАВИСИМОСТИ

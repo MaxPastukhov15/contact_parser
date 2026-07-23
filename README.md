@@ -1,104 +1,119 @@
-# TERRA DOK Lead Generation Pipeline
+# Contact Parser 2GIS
 
-Инструмент для автоматизированного сбора B2B-лидов компании **«ТЕРРА ДОК»** — производителя премиальных деревянных оконных конструкций (дуб, лиственница, сосна).
+Universal contact parser for 2GIS. Parses any 2GIS search result URL, extracts company contacts (name, phone, email, website, address) and exports to CSV/XLSX/JSON.
 
-## Цель
+## Features
 
-Сформировать структурированную базу контактов для последующей отправки коммерческих презентаций строительным компаниям, архитектурным бюро, дизайнерским студиям и реставрационным мастерским.
+- Parse any 2GIS search URL (any city, category, query)
+- Headless Chrome for anti-bot bypass
+- CSV / XLSX / JSON export (with --pipe work only with csv)
+- Optional contact enrichment pipeline (filters, dedup, normalization)
+- Scrapy spider for company website scraping
 
-## Архитектура
-
-```
-┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌───────────┐
-│  Discovery  │───▶│  Enrichment  │───▶│  Filtering  │───▶│  Export   │
-│  (API/HTML) │    │  (search)    │    │  (stop/val) │    │  (Polars) │
-└─────────────┘    └──────────────┘    └─────────────┘    └───────────┘
-       │                   │                   │
-       ▼                   ▼                   ▼
-    SQLite (state manager / dedup)
-```
-
-### Этапы пайплайна
-
-1. **Discovery** — сбор данных через API 2ГИС, Яндекс.Карты, Google Places + HTML-парсинг отраслевых каталогов (archi.ru, moscow-architects.ru, fis.ru, supl.biz).
-2. **Гео-экспансия** — старт с МСК + СПб; если <1000 компаний — добор из Краснодара, Новосибирска, Екатеринбурга.
-3. **Enrichment** — если у компании нет сайта, выполняется поисковый запрос `[Название] [Город] официальный сайт`.
-4. **Фильтрация** — удаление компаний по стоп-словам (ПВХ, алюминий, пластиковые окна и т.д.), валидация телефонов (`7-xxx-xxx-xx-xx`) и email.
-5. **Экспорт** — выгрузка в CSV (разделитель `;`) через Polars.
-
-## Установка
+## Installation
 
 ```bash
 git clone <repo> contact_parser
 cd contact_parser
 
-# Виртуальное окружение + зависимости
 python -m venv venv
-venv\Scripts\activate    # Windows
-pip install -e ".[dev]"
+venv\Scripts\activate          # Windows
+# source venv/bin/activate    # Linux/Mac
 
-# Настройка API-ключей
-copy .env.example .env   # Windows
-# Отредактируйте .env, вписав ключи:
-#   GEO_2GIS_API_KEY
-#   YANDEX_MAPS_API_KEY
-#   GOOGLE_PLACES_API_KEY
+pip install -e .
 ```
 
-## Запуск
+## Usage
+
+### Parse 2GIS
 
 ```bash
-python main.py
-# или
-run_pipeline.bat
+# Any 2GIS search URL works
+terra-dok scrape-2gis -u "https://2gis.ru/moscow/search/коттеджи" --headless
+terra-dok scrape-2gis -u "https://2gis.ru/Novosibirsk/search/строительные компании" -f csv -o output/
+
+# Custom output filename
+terra-dok scrape-2gis -u "https://2gis.ru/novosibirsk/search/стройка" --headless -n novosibirsk_stroika
 ```
 
-## Тестирование
+### Parse + Enrichment Pipeline
 
 ```bash
-python -m pytest tests -v
-# или
-run_tests.bat
+# Parse 2GIS and run contact enrichment (filters, dedup, normalization)
+terra-dok scrape-2gis -u "https://2gis.ru/moscow/search/коттеджи" --headless --pipe
 ```
 
-## Структура проекта
+### Scrape Company Websites
+
+```bash
+# Run Scrapy spider on company websites
+terra-dok run-scraper --file path/to/contacts.csv
+```
+
+## CLI Reference
+
+### `terra-dok scrape-2gis`
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `-u, --urls` | 2GIS search URLs (one or more) | *required* |
+| `-o, --output-dir` | Output directory for CSV | `maps_data/parsed_2gis/` |
+| `-f, --format` | Output format: csv, xlsx, json | `csv` |
+| `-n, --name` | Output filename without extension | `result` |
+| `--headless` | Run Chrome in headless mode | off |
+| `--max-records` | Max records per URL | `1000` |
+| `--pipe` | Run enrichment pipeline after parsing | off |
+
+### `terra-dok run-scraper`
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--file` | Path to contacts CSV | `maps_data/contacts/final_2gis.csv` |
+
+## Project Structure
 
 ```
 contact_parser/
-├── main.py                     # Точка входа
-├── config/
-│   ├── settings.py             # Конфигурация (API-ключи, URLs, лимиты)
-│   ├── regions.py              # Регионы сбора (primary + secondary)
-│   └── stop_words.py           # Стоп-слова (20+ regex-паттернов)
 ├── src/
-│   ├── models.py               # Dataclass Company
-│   ├── discovery/              # Модуль сбора
-│   │   ├── base.py             # BaseScraper (backoff, UA-ротация)
-│   │   ├── geo_services.py     # 2GIS / Яндекс / Google Places API
-│   │   └── catalogs.py         # archi.ru / moscow-architects / fis.ru / supl.biz
-│   ├── enrichment/             # Добор URL через поиск
-│   ├── filtering/              # Стоп-слова + валидаторы
-│   ├── storage/                # SQLite state manager (aiosqlite)
-│   ├── export/                 # Polars → CSV
-│   └── pipeline/               # Оркестратор
-└── tests/
-    ├── test_validators.py      # Тесты телефонов и email
-    ├── test_stop_words.py      # Тесты фильтрации
-    └── test_geo_expansion.py   # Тесты расширения географии
+│   ├── cli/
+│   │   ├── app.py                  # Unified CLI (terra-dok)
+│   │   ├── scrape_2gis.py          # 2GIS parser command
+│   │   └── run_scraper_cmd.py      # Scrapy spider command
+│   ├── vendor/
+│   │   └── parser2gis/             # Embedded 2GIS parser (pydantic v2)
+│   │       ├── main.py             # CLI entry, argparse
+│   │       ├── config.py           # Configuration model
+│   │       ├── cli/app.py          # CLI app wrapper
+│   │       ├── runner/cli.py       # CLIRunner
+│   │       ├── parser/             # Page parsers (main, firm, in_building)
+│   │       ├── chrome/             # Chrome DevTools Protocol
+│   │       ├── writer/             # CSV/XLSX/JSON writers
+│   │       └── logger/             # Logging setup
+│   ├── pipelines/
+│   │   └── parser2gis_pipe.py      # Contact enrichment pipeline
+│   ├── companies_website/
+│   │   ├── run_scraper.py          # Scrapy runner
+│   │   └── core/website_scraper.py # CompanyWebsiteSpider
+│   ├── imitators/                  # B2B catalog spiders
+│   ├── api_parser/                 # 2GIS API parser
+│   └── configs/                    # Settings, scraper config
+└── pyproject.toml
 ```
 
-## Выходные данные
+## Output Format
 
-CSV-файл с колонками:
+| Column | Description |
+|--------|-------------|
+| Company name | Legal or trade name |
+| Description | Brief company description |
+| Category | Construction / Architecture / Design / Restoration |
+| Rubric | Source rubric |
+| Email | Corporate email (info@, sales@ preferred) |
+| Phone | Format `7-xxx-xxx-xx-xx` |
+| Website | Main page URL |
+| Region | City / region |
+| Address | Physical address |
 
-| Колонка | Описание |
-|---|---|
-| Название компании | Юридическое или торговое наименование |
-| Чем занимается | Краткое описание деятельности |
-| Категория | Строительство / Архитектура / Проектирование / Дизайн / Реставрация |
-| Рубрика | Исходная рубрика из источника |
-| Электронный адрес | Корпоративный email (info@, sales@ — приоритет) |
-| Номер телефона | Формат `7-xxx-xxx-xx-xx` |
-| Адрес сайта | Главная страница |
-| Регион | Город / область |
-| Адрес офиса | Фактический адрес |
+## Credits
+
+2GIS parser core based on [interlark/parser-2gis](https://github.com/interlark/parser-2gis) by Andy Trofimov.
