@@ -22,14 +22,15 @@ class InBuildingParser(MainParser):
     @staticmethod
     def url_pattern():
         """URL pattern for the parser."""
-        return r'https?://2gis\.[^/]+/[^/]+/inside/.*'
+        return r"https?://2gis\.[^/]+/[^/]+/inside/.*"
 
     @wait_until_finished(timeout=5, throw_exception=False)
     def _get_links(self) -> list[DOMNode]:
         """Extracts specific DOM node links from current DOM snapshot."""
+
         def valid_link(node: DOMNode) -> bool:
-            if node.local_name == 'a' and 'href' in node.attributes:
-                link_match = re.match(r'/[^/]+/firm/[^/]+$', node.attributes['href'])
+            if node.local_name == "a" and "href" in node.attributes:
+                link_match = re.match(r"/[^/]+/firm/[^/]+$", node.attributes["href"])
                 return bool(link_match)
 
             return False
@@ -44,18 +45,18 @@ class InBuildingParser(MainParser):
             writer: Target file writer.
         """
         # Go URL
-        self._chrome_remote.navigate(self._url, referer='https://google.com', timeout=120)
+        self._chrome_remote.navigate(self._url, referer="https://google.com", timeout=120)
 
         # Document loaded, get its response
         responses = self._chrome_remote.get_responses(timeout=5)
         if not responses:
-            logger.error('Ошибка получения ответа сервера.')
+            logger.error("Ошибка получения ответа сервера.")
             return
         document_response = responses[0]
 
         # Handle 404
-        assert document_response['mimeType'] == 'text/html'
-        if document_response['status'] == 404:
+        assert document_response["mimeType"] == "text/html"
+        if document_response["status"] == 404:
             logger.warn('Сервер вернул сообщение "Точных совпадений нет / Не найдено".')
 
             if self._options.skip_404_response:
@@ -71,9 +72,9 @@ class InBuildingParser(MainParser):
         @wait_until_finished(timeout=5, throw_exception=False)
         def get_unique_links() -> list[DOMNode]:
             links = self._get_links()
-            link_addresses = set(x.attributes['href'] for x in links) - visited_links
+            link_addresses = set(x.attributes["href"] for x in links) - visited_links
             visited_links.update(link_addresses)
-            return [x for x in links if x.attributes['href'] in link_addresses]
+            return [x for x in links if x.attributes["href"] in link_addresses]
 
         # Loop down through lazy load organizations list
         while True:
@@ -101,17 +102,19 @@ class InBuildingParser(MainParser):
                     resp = self._chrome_remote.wait_response(self._item_response_pattern)
 
                     # If request is failed - repeat, otherwise go further.
-                    if resp and resp['status'] >= 0:
+                    if resp and resp["status"] >= 0:
                         break
 
                 # Get response body data
-                if resp and resp['status'] >= 0:
+                if resp and resp["status"] >= 0:
                     data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
 
                     try:
                         doc = json.loads(data)
                     except json.JSONDecodeError:
-                        logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
+                        logger.error(
+                            'Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data
+                        )
                         doc = None
                 else:
                     doc = None
@@ -121,9 +124,11 @@ class InBuildingParser(MainParser):
                     writer.write(doc)
                     collected_records += 1
                 else:
-                    logger.error('Данные не получены, пропуск позиции.')
+                    logger.error("Данные не получены, пропуск позиции.")
 
                 # We've reached our limit, bail
                 if collected_records >= self._options.max_records:
-                    logger.info('Спарсено максимально разрешенное количество записей с данного URL.')
+                    logger.info(
+                        "Спарсено максимально разрешенное количество записей с данного URL."
+                    )
                     return

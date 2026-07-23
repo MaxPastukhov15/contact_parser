@@ -4,7 +4,7 @@ import base64
 import json
 import re
 import urllib.parse
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from ...chrome import ChromeRemote
 from ...common import wait_until_finished
@@ -28,19 +28,21 @@ class MainParser:
         chrome_options: Chrome options.
         parser_options: Parser options.
     """
-    def __init__(self, url: str,
-                 chrome_options: ChromeOptions,
-                 parser_options: ParserOptions) -> None:
+
+    def __init__(
+        self, url: str, chrome_options: ChromeOptions, parser_options: ParserOptions
+    ) -> None:
         self._options = parser_options
         self._url = url
 
         # "Catalog Item Document" response pattern.
-        self._item_response_pattern = r'https://catalog\.api\.2gis.[^/]+/.*/items/byid'
+        self._item_response_pattern = r"https://catalog\.api\.2gis.[^/]+/.*/items/byid"
 
         # Open browser, start remote
         response_patterns = [self._item_response_pattern]
-        self._chrome_remote = ChromeRemote(chrome_options=chrome_options,
-                                           response_patterns=response_patterns)
+        self._chrome_remote = ChromeRemote(
+            chrome_options=chrome_options, response_patterns=response_patterns
+        )
         self._chrome_remote.start()
 
         # Add counter for 2GIS requsts
@@ -53,17 +55,20 @@ class MainParser:
     @staticmethod
     def url_pattern():
         """URL pattern for the parser."""
-        return r'https?://2gis\.[^/]+/[^/]+/search/.*'
+        return r"https?://2gis\.[^/]+/[^/]+/search/.*"
 
     @wait_until_finished(timeout=5, throw_exception=False)
     def _get_links(self) -> list[DOMNode]:
         """Extracts specific DOM node links from current DOM snapshot."""
+
         def valid_link(node: DOMNode) -> bool:
-            if node.local_name == 'a' and 'href' in node.attributes:
-                link_match = re.match(r'.*/(firm|station)/.*\?stat=(?P<data>[a-zA-Z0-9%]+)', node.attributes['href'])
+            if node.local_name == "a" and "href" in node.attributes:
+                link_match = re.match(
+                    r".*/(firm|station)/.*\?stat=(?P<data>[a-zA-Z0-9%]+)", node.attributes["href"]
+                )
                 if link_match:
                     try:
-                        base64.b64decode(urllib.parse.unquote(link_match.group('data')))
+                        base64.b64decode(urllib.parse.unquote(link_match.group("data")))
                         return True
                     except:
                         pass
@@ -76,7 +81,7 @@ class MainParser:
     def _add_xhr_counter(self) -> None:
         """Inject old-school wrapper around XMLHttpRequest,
         to keep track of all pending requests to 2GIS website."""
-        xhr_script = r'''
+        xhr_script = r"""
             (function() {
                 var oldOpen = XMLHttpRequest.prototype.open;
                 XMLHttpRequest.prototype.open = function(method, url, async, user, pass) {
@@ -95,28 +100,30 @@ class MainParser:
                     oldOpen.call(this, method, url, async, user, pass);
                 }
             })();
-        '''
+        """
         self._chrome_remote.add_start_script(xhr_script)
 
     @wait_until_finished(timeout=120)
     def _wait_requests_finished(self) -> bool:
         """Wait for all pending requests."""
-        return self._chrome_remote.execute_script('window.openHTTPs == 0')
+        return self._chrome_remote.execute_script("window.openHTTPs == 0")
 
     def _get_available_pages(self) -> dict[int, DOMNode]:
         """Get available pages to navigate."""
         dom_tree = self._chrome_remote.get_document()
-        dom_links = dom_tree.search(lambda x: x.local_name == 'a' and 'href' in x.attributes)
+        dom_links = dom_tree.search(lambda x: x.local_name == "a" and "href" in x.attributes)
 
         available_pages = {}
         for link in dom_links:
-            link_match = re.match(r'.*/search/.*/page/(?P<page_number>\d+)', link.attributes['href'])
+            link_match = re.match(
+                r".*/search/.*/page/(?P<page_number>\d+)", link.attributes["href"]
+            )
             if link_match:
-                available_pages[int(link_match.group('page_number'))] = link
+                available_pages[int(link_match.group("page_number"))] = link
 
         return available_pages
 
-    def _go_page(self, n_page: int) -> Optional[int]:
+    def _go_page(self, n_page: int) -> int | None:
         """Go page with number `n_page`.
 
         Note:
@@ -147,27 +154,27 @@ class MainParser:
         # If a page argument found in the URL, we should manually walk to it first.
 
         current_page_number = 1
-        url = re.sub(r'/page/\d+', '', self._url, re.I)
+        url = re.sub(r"/page/\d+", "", self._url, re.I)
 
-        page_match = re.search(r'/page/(?P<page_number>\d+)', self._url, re.I)
+        page_match = re.search(r"/page/(?P<page_number>\d+)", self._url, re.I)
         if page_match:
-            walk_page_number = int(page_match.group('page_number'))
+            walk_page_number = int(page_match.group("page_number"))
         else:
             walk_page_number = None
 
         # Go URL
-        self._chrome_remote.navigate(url, referer='https://google.com', timeout=120)
+        self._chrome_remote.navigate(url, referer="https://google.com", timeout=120)
 
         # Document loaded, get its response
         responses = self._chrome_remote.get_responses(timeout=5)
         if not responses:
-            logger.error('Ошибка получения ответа сервера.')
+            logger.error("Ошибка получения ответа сервера.")
             return
         document_response = responses[0]
 
         # Handle 404
-        assert document_response['mimeType'] == 'text/html'
-        if document_response['status'] == 404:
+        assert document_response["mimeType"] == "text/html"
+        if document_response["status"] == 404:
             logger.warn('Сервер вернул сообщение "Точных совпадений нет / Не найдено".')
 
             if self._options.skip_404_response:
@@ -184,7 +191,7 @@ class MainParser:
         @wait_until_finished(timeout=10, throw_exception=False)
         def get_unique_links() -> list[DOMNode]:
             links = self._get_links()
-            link_addresses = set(x.attributes['href'] for x in links)
+            link_addresses = set(x.attributes["href"] for x in links)
             if link_addresses & visited_links:
                 return []
 
@@ -216,17 +223,24 @@ class MainParser:
                         resp = self._chrome_remote.wait_response(self._item_response_pattern)
 
                         # If request is failed - repeat, otherwise go further.
-                        if resp and resp['status'] >= 0:
+                        if resp and resp["status"] >= 0:
                             break
 
                     # Get response body data
-                    if resp and resp['status'] >= 0:
-                        data = self._chrome_remote.get_response_body(resp, timeout=10) if resp else None
+                    if resp and resp["status"] >= 0:
+                        data = (
+                            self._chrome_remote.get_response_body(resp, timeout=10)
+                            if resp
+                            else None
+                        )
 
                         try:
                             doc = json.loads(data)
                         except json.JSONDecodeError:
-                            logger.error('Сервер вернул некорректный JSON документ: "%s", пропуск позиции.', data)
+                            logger.error(
+                                'Сервер вернул некорректный JSON документ: "%s", пропуск позиции.',
+                                data,
+                            )
                             doc = None
                     else:
                         doc = None
@@ -236,16 +250,18 @@ class MainParser:
                         writer.write(doc)
                         collected_records += 1
                     else:
-                        logger.error('Данные не получены, пропуск позиции.')
+                        logger.error("Данные не получены, пропуск позиции.")
 
                     # We've reached our limit, bail
                     if collected_records >= self._options.max_records:
-                        logger.info('Спарсено максимально разрешенное количество записей с данного URL.')
+                        logger.info(
+                            "Спарсено максимально разрешенное количество записей с данного URL."
+                        )
                         return
 
             # Evaluate Garbage Collection if it's been exposed and enabled
             if self._options.use_gc and current_page_number % self._options.gc_pages_interval == 0:
-                logger.debug('Запуск сборщика мусора.')
+                logger.debug("Запуск сборщика мусора.")
                 self._chrome_remote.execute_script('"gc" in window && window.gc()')
 
             # Free memory allocated for collected requests
@@ -254,10 +270,14 @@ class MainParser:
             # Calculate next page number and navigate it
             if walk_page_number:
                 available_pages = self._get_available_pages()
-                available_pages_ahead = {k: v for k, v in available_pages.items()
-                                         if k > current_page_number}
-                next_page_number = min(available_pages_ahead, key=lambda n: abs(n - walk_page_number),  # type: ignore
-                                       default=current_page_number + 1)
+                available_pages_ahead = {
+                    k: v for k, v in available_pages.items() if k > current_page_number
+                }
+                next_page_number = min(
+                    available_pages_ahead,
+                    key=lambda n: abs(n - walk_page_number),  # type: ignore
+                    default=current_page_number + 1,
+                )
             else:
                 next_page_number = current_page_number + 1
 
@@ -280,6 +300,8 @@ class MainParser:
 
     def __repr__(self) -> str:
         classname = self.__class__.__name__
-        return (f'{classname}(parser_options={self._options!r}, '
-                'chrome_remote={self._chrome_remote!r}, '
-                'url={self._url!r}')
+        return (
+            f"{classname}(parser_options={self._options!r}, "
+            "chrome_remote={self._chrome_remote!r}, "
+            "url={self._url!r}"
+        )

@@ -3,5 +3,5 @@ class ParserException(Exception):
 
 
 __all__ = [
-    'ParserException',
+    "ParserException",
 ]

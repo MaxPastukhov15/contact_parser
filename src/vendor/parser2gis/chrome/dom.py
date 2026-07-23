@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Callable, Dict, List
+from collections.abc import Callable
 
 from pydantic import BaseModel, Field, validator
 
@@ -18,16 +18,17 @@ class DOMNode(BaseModel):
         children: Node's children.
         attributes: Node's attributes.
     """
-    id: int = Field(..., alias='nodeId')
-    backend_id: int = Field(..., alias='backendNodeId')
-    type: int = Field(..., alias='nodeType')
-    name: str = Field(..., alias='nodeName')
-    local_name: str = Field(..., alias='localName')
-    value: str = Field(..., alias='nodeValue')
-    children: List[DOMNode] = []
-    attributes: Dict[str, str] = {}
 
-    @validator('attributes', pre=True)
+    id: int = Field(..., alias="nodeId")
+    backend_id: int = Field(..., alias="backendNodeId")
+    type: int = Field(..., alias="nodeType")
+    name: str = Field(..., alias="nodeName")
+    local_name: str = Field(..., alias="localName")
+    value: str = Field(..., alias="nodeValue")
+    children: list[DOMNode] = []
+    attributes: dict[str, str] = {}
+
+    @validator("attributes", pre=True)
     def validate_attributes(cls, attributes_list: list[str]) -> dict[str, str]:
         attributes = {}
         attributes_list_count = len(attributes_list)
@@ -39,6 +40,7 @@ class DOMNode(BaseModel):
 
     def search(self, predicate: Callable[[DOMNode], bool]) -> list[DOMNode]:
         """Search nodes in the DOM Tree using `predicate`."""
+
         def _search(node: DOMNode, found_nodes: list[DOMNode]) -> None:
             if predicate(node):
                 found_nodes.append(node)

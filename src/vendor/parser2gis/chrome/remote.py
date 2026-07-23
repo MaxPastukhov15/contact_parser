@@ -4,7 +4,8 @@ import base64
 import queue
 import re
 import threading
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import pychrome
 import requests
@@ -20,8 +21,8 @@ from .patches import patch_all
 if TYPE_CHECKING:
     from .options import ChromeOptions
 
-    Request = Dict[str, Any]
-    Response = Dict[str, Any]
+    Request = dict[str, Any]
+    Response = dict[str, Any]
 
 # Apply all custom patches
 patch_all()
@@ -34,13 +35,16 @@ class ChromeRemote:
         chrome_options: ChromeOptions parameters.
         response_patterns: Response URL patterns to capture.
     """
+
     def __init__(self, chrome_options: ChromeOptions, response_patterns: list[str]) -> None:
         self._chrome_options: ChromeOptions = chrome_options
         self._chrome_browser: ChromeBrowser
         self._chrome_interface: pychrome.Browser
         self._chrome_tab: pychrome.Tab
         self._response_patterns: list[str] = response_patterns
-        self._response_queues: dict[str, queue.Queue[Response]] = {x: queue.Queue() for x in response_patterns}
+        self._response_queues: dict[str, queue.Queue[Response]] = {
+            x: queue.Queue() for x in response_patterns
+        }
         self._requests: dict[str, Request] = {}  # _requests[request_id] = <Request>
         self._requests_lock = threading.Lock()
 
@@ -63,7 +67,7 @@ class ChromeRemote:
         """Open browser, create new tab, setup remote interface."""
         # Open browser
         self._chrome_browser = ChromeBrowser(self._chrome_options)
-        self._dev_url = f'http://127.0.0.1:{self._chrome_browser.remote_port}'
+        self._dev_url = f"http://127.0.0.1:{self._chrome_browser.remote_port}"
 
         # Connect browser with CDP
         self._connect_interface()
@@ -72,28 +76,28 @@ class ChromeRemote:
 
     def _create_tab(self) -> pychrome.Tab:
         """Create Chrome Tab."""
-        resp = requests.put('%s/json/new' % (self._dev_url), json=True)         
+        resp = requests.put("%s/json/new" % (self._dev_url), json=True)
         return pychrome.Tab(**resp.json())
 
     def _close_tab(self, tab: pychrome.Tab) -> None:
         """Close Chrome Tab."""
         if tab.status == pychrome.Tab.status_started:
             tab.stop()
-        requests.put('%s/json/close/%s' % (self._dev_url, tab.id))
+        requests.put("%s/json/close/%s" % (self._dev_url, tab.id))
 
     def _setup_tab(self) -> None:
         """Hide webdriver, enable requests/response interception, fix UA."""
         # Fix user agent for headless browser
-        original_useragent = self.execute_script('navigator.userAgent')
-        fixed_useragent = original_useragent.replace('Headless', '')
+        original_useragent = self.execute_script("navigator.userAgent")
+        fixed_useragent = original_useragent.replace("Headless", "")
         self._chrome_tab.Network.setUserAgentOverride(userAgent=fixed_useragent)
 
         # Hide webdriver traces
-        self.add_start_script(r'''
+        self.add_start_script(r"""
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
             })
-        ''')
+        """)
 
         # def requestPaused(**kwargs):
         #     """Modify outgoing headers."""
@@ -112,43 +116,43 @@ class ChromeRemote:
 
         def responseReceived(**kwargs) -> None:
             """Gather responses."""
-            response = kwargs.pop('response')
-            response['meta'] = kwargs
-            request_id = kwargs['requestId']
-            resource_type = kwargs.get('type')
+            response = kwargs.pop("response")
+            response["meta"] = kwargs
+            request_id = kwargs["requestId"]
+            resource_type = kwargs.get("type")
 
             # Skip preflights
-            if resource_type == 'Preflight':
+            if resource_type == "Preflight":
                 return
 
             # Add response
             with self._requests_lock:
                 if request_id in self._requests:
                     request = self._requests[request_id]
-                    response['request'] = request
-                    request['response'] = response
+                    response["request"] = request
+                    request["response"] = response
 
             # If response is desired, put it in the queue
             for pattern in self._response_patterns:
-                if re.match(pattern, response['url']):
+                if re.match(pattern, response["url"]):
                     self._response_queues[pattern].put(response)
 
         def loadingFailed(**kwargs) -> None:
-            error_text = kwargs.get('errorText')
-            blocked_reason = kwargs.get('blockedReason')
-            status_text = ''
+            error_text = kwargs.get("errorText")
+            blocked_reason = kwargs.get("blockedReason")
+            status_text = ""
 
             if error_text:
-                status_text = 'error: %s' % error_text
+                status_text = "error: %s" % error_text
             if blocked_reason:
                 if status_text:
-                    status_text += ', '
-                status_text += 'blocked_reason: %s' % blocked_reason
+                    status_text += ", "
+                status_text += "blocked_reason: %s" % blocked_reason
 
-            request_id = kwargs.get('requestId')
+            request_id = kwargs.get("requestId")
             response = {
-                'status': -1,
-                'statusText': status_text,
+                "status": -1,
+                "statusText": status_text,
             }
 
             # Add response
@@ -156,9 +160,9 @@ class ChromeRemote:
             with self._requests_lock:
                 if request_id in self._requests:
                     request = self._requests[request_id]
-                    response['request'] = request
-                    request['response'] = response
-                    request_url = request['url']
+                    response["request"] = request
+                    request["response"] = response
+                    request_url = request["url"]
 
             if request_url:
                 # If response is desired, put it in the queue
@@ -167,13 +171,13 @@ class ChromeRemote:
                         self._response_queues[pattern].put(response)
 
         def requestWillBeSent(**kwargs) -> None:
-            request = kwargs.pop('request')
-            request['meta'] = kwargs
-            request_id = kwargs['requestId']
-            resource_type = kwargs.get('type')
+            request = kwargs.pop("request")
+            request["meta"] = kwargs
+            request_id = kwargs["requestId"]
+            resource_type = kwargs.get("type")
 
             # Skip preflights
-            if resource_type == 'Preflight':
+            if resource_type == "Preflight":
                 return
 
             # Add request
@@ -202,8 +206,8 @@ class ChromeRemote:
             and check if our tab is still alive."""
             while not self._chrome_tab._stopped.is_set():
                 try:
-                    ret = requests.get('%s/json' % self._dev_url, json=True)
-                    if not any(x['id'] == self._chrome_tab.id for x in ret.json()):
+                    ret = requests.get("%s/json" % self._dev_url, json=True)
+                    if not any(x["id"] == self._chrome_tab.id for x in ret.json()):
                         nonlocal tab_detached
                         tab_detached = True
                         self._chrome_tab._stopped.set()
@@ -225,14 +229,15 @@ class ChromeRemote:
                     return original_send(*args, **kwargs)
                 except pychrome.UserAbortException:
                     if tab_detached:
-                        raise pychrome.RuntimeException('Tab has been stopped')
+                        raise pychrome.RuntimeException("Tab has been stopped")
                     else:
                         raise
+
             return wrapped_send
 
         self._chrome_tab._send = get_send_with_reraise()
 
-    def navigate(self, url: str, referer: str = '', timeout: int = 60) -> None:
+    def navigate(self, url: str, referer: str = "", timeout: int = 60) -> None:
         """Navigate to URL.
 
         Args:
@@ -243,7 +248,7 @@ class ChromeRemote:
             None on success, error message on failure.
         """
         ret = self._chrome_tab.Page.navigate(url=url, _timeout=timeout, referrer=referer)
-        error_message = ret.get('errorText', None)
+        error_message = ret.get("errorText", None)
         if error_message:
             raise ChromeException(error_message)
 
@@ -259,7 +264,7 @@ class ChromeRemote:
         """
         try:
             if self._chrome_tab._stopped.is_set():
-                raise pychrome.RuntimeException('Tab has been stopped')
+                raise pychrome.RuntimeException("Tab has been stopped")
             return self._response_queues[response_pattern].get(block=False)
         except queue.Empty:
             return None
@@ -277,24 +282,25 @@ class ChromeRemote:
             response: Response.
         """
         try:
-            request_id = response['meta']['requestId']
-            response_data = self._chrome_tab.call_method('Network.getResponseBody',
-                                                         requestId=request_id)
-            if response_data['base64Encoded']:
-                response_data['body'] = base64.b64decode(response_data['body']).decode('utf-8')
+            request_id = response["meta"]["requestId"]
+            response_data = self._chrome_tab.call_method(
+                "Network.getResponseBody", requestId=request_id
+            )
+            if response_data["base64Encoded"]:
+                response_data["body"] = base64.b64decode(response_data["body"]).decode("utf-8")
 
-            response_body = response_data['body']
-            response['body'] = response_body
+            response_body = response_data["body"]
+            response["body"] = response_body
             return response_body
         except pychrome.CallMethodException:
             # Nothing, response body not found
-            return ''
+            return ""
 
     @wait_until_finished(timeout=None, throw_exception=False)
     def get_responses(self) -> list[Response]:
         """Get gathered responses."""
         with self._requests_lock:
-            return [x['response'] for x in self._requests.values() if 'response' in x]
+            return [x["response"] for x in self._requests.values() if "response" in x]
 
     def get_requests(self) -> list[Request]:
         """Get recorded requests."""
@@ -311,7 +317,7 @@ class ChromeRemote:
             Root DOM node.
         """
         tree = self._chrome_tab.DOM.getDocument(depth=-1 if full else 1)
-        return DOMNode(**tree['root'])
+        return DOMNode(**tree["root"])
 
     def add_start_script(self, source: str) -> None:
         """Add script that evaluates on every new page.
@@ -346,21 +352,25 @@ class ChromeRemote:
         Returns:
             Result value.
         """
-        eval_result = self._chrome_tab.Runtime.evaluate(expression=expression,
-                                                        returnByValue=True)
-        return eval_result['result'].get('value', None)
+        eval_result = self._chrome_tab.Runtime.evaluate(expression=expression, returnByValue=True)
+        return eval_result["result"].get("value", None)
 
-    def perform_click(self, dom_node: DOMNode, timeout: Optional[int] = None) -> None:
+    def perform_click(self, dom_node: DOMNode, timeout: int | None = None) -> None:
         """Perform mouse click on DOM node.
 
         Args:
             dom_node: DOMNode element.
         """
-        resolved_node = self._chrome_tab.DOM.resolveNode(backendNodeId=dom_node.backend_id, _timeout=timeout)
-        object_id = resolved_node['object']['objectId']
-        self._chrome_tab.Runtime.callFunctionOn(objectId=object_id, functionDeclaration='''
+        resolved_node = self._chrome_tab.DOM.resolveNode(
+            backendNodeId=dom_node.backend_id, _timeout=timeout
+        )
+        object_id = resolved_node["object"]["objectId"]
+        self._chrome_tab.Runtime.callFunctionOn(
+            objectId=object_id,
+            functionDeclaration="""
             (function() { this.scrollIntoView({ block: "center",  behavior: "instant" }); this.click(); })
-        ''')
+        """,
+        )
 
     def wait(self, timeout: float | None = None) -> None:
         """Idle for `timeout` seconds."""
@@ -390,4 +400,4 @@ class ChromeRemote:
 
     def __repr__(self) -> str:
         classname = self.__class__.__name__
-        return f'{classname}(options={self._chrome_options!r}, response_patterns={self._response_patterns!r})'
+        return f"{classname}(options={self._chrome_options!r}, response_patterns={self._response_patterns!r})"

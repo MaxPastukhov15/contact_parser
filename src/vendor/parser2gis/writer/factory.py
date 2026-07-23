@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from .writers import CSVWriter, XLSXWriter, FileWriter, JSONWriter
-
 from .exceptions import WriterUnknownFileFormat
+from .writers import CSVWriter, FileWriter, JSONWriter, XLSXWriter
 
 if TYPE_CHECKING:
     from .options import WriterOptions
@@ -22,11 +21,11 @@ def get_writer(file_path: str, file_format: str, writer_options: WriterOptions) 
         File Writer instance.
     """
 
-    if file_format == 'json':
+    if file_format == "json":
         return JSONWriter(file_path, writer_options)
-    elif file_format == 'csv':
+    elif file_format == "csv":
         return CSVWriter(file_path, writer_options)
-    elif file_format == 'xlsx':
+    elif file_format == "xlsx":
         return XLSXWriter(file_path, writer_options)
 
-    raise WriterUnknownFileFormat('Неизвестный формат файла: %s', file_format)
+    raise WriterUnknownFileFormat("Неизвестный формат файла: %s", file_format)

@@ -4,7 +4,8 @@ import csv
 import os
 import re
 import shutil
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -16,14 +17,15 @@ from .file_writer import FileWriter
 
 class CSVWriter(FileWriter):
     """Writer to CSV table."""
+
     @property
     def _type_names(self) -> dict[str, str]:
         return {
-            'parking': 'Парковка',
-            'street': 'Улица',
-            'road': 'Дорога',
-            'crossroad': 'Перекрёсток',
-            'station': 'Остановка',
+            "parking": "Парковка",
+            "street": "Улица",
+            "road": "Дорога",
+            "crossroad": "Перекрёсток",
+            "station": "Остановка",
         }
 
     @property
@@ -31,48 +33,68 @@ class CSVWriter(FileWriter):
         # Complex mapping means its content could contain several entities bound by user settings.
         # For example: phone -> phone_1, phone_2, ..., phone_n
         return {
-            'phone': 'Телефон', 'email': 'E-mail', 'website': 'Веб-сайт', 'instagram': 'Instagram',
-            'twitter': 'Twitter', 'facebook': 'Facebook', 'vkontakte': 'ВКонтакте', 'whatsapp': 'WhatsApp',
-            'viber': 'Viber', 'telegram': 'Telegram', 'youtube': 'YouTube', 'skype': 'Skype'
+            "phone": "Телефон",
+            "email": "E-mail",
+            "website": "Веб-сайт",
+            "instagram": "Instagram",
+            "twitter": "Twitter",
+            "facebook": "Facebook",
+            "vkontakte": "ВКонтакте",
+            "whatsapp": "WhatsApp",
+            "viber": "Viber",
+            "telegram": "Telegram",
+            "youtube": "YouTube",
+            "skype": "Skype",
         }
 
     @property
     def _data_mapping(self) -> dict[str, Any]:
         data_mapping = {
-            'name': 'Наименование', 'description': 'Описание', 'rubrics': 'Рубрики',
-            'address': 'Адрес', 'address_comment': 'Комментарий к адресу',
-            'postcode': 'Почтовый индекс', 'living_area': 'Микрорайон', 'district': 'Район', 'city': 'Город',
-            'district_area': 'Округ', 'region': 'Регион', 'country': 'Страна', 'schedule': 'Часы работы',
-            'timezone': 'Часовой пояс', 'general_rating': 'Рейтинг', 'general_review_count': 'Количество отзывов'
+            "name": "Наименование",
+            "description": "Описание",
+            "rubrics": "Рубрики",
+            "address": "Адрес",
+            "address_comment": "Комментарий к адресу",
+            "postcode": "Почтовый индекс",
+            "living_area": "Микрорайон",
+            "district": "Район",
+            "city": "Город",
+            "district_area": "Округ",
+            "region": "Регион",
+            "country": "Страна",
+            "schedule": "Часы работы",
+            "timezone": "Часовой пояс",
+            "general_rating": "Рейтинг",
+            "general_review_count": "Количество отзывов",
         }
 
         # Expand complex mapping
         for k, v in self._complex_mapping.items():
             for n in range(1, self._options.csv.columns_per_entity + 1):
-                data_mapping[f'{k}_{n}'] = f'{v} {n}'
+                data_mapping[f"{k}_{n}"] = f"{v} {n}"
 
         if not self._options.csv.add_rubrics:
-            data_mapping.pop('rubrics', None)
+            data_mapping.pop("rubrics", None)
 
         return {
             **data_mapping,
             **{
-                'point_lat': 'Широта',
-                'point_lon': 'Долгота',
-                'url': '2GIS URL',
-                'type': 'Тип',
-            }
+                "point_lat": "Широта",
+                "point_lon": "Долгота",
+                "url": "2GIS URL",
+                "type": "Тип",
+            },
         }
 
     def _writerow(self, row: dict[str, Any]) -> None:
         """Write a `row` into CSV."""
         if self._options.verbose:
-            logger.info('Парсинг [%d] > %s', self._wrote_count + 1, row['name'])
+            logger.info("Парсинг [%d] > %s", self._wrote_count + 1, row["name"])
 
         try:
             self._writer.writerow(row)
         except Exception as e:
-            logger.error('Ошибка во время записи: %s', e)
+            logger.error("Ошибка во время записи: %s", e)
 
     def __enter__(self) -> CSVWriter:
         super().__enter__()
@@ -84,25 +106,28 @@ class CSVWriter(FileWriter):
     def __exit__(self, *exc_info) -> None:
         super().__exit__(*exc_info)
         if self._options.csv.remove_empty_columns:
-            logger.info('Удаление пустых колонок CSV.')
+            logger.info("Удаление пустых колонок CSV.")
             self._remove_empty_columns()
         if self._options.csv.remove_duplicates:
-            logger.info('Удаление повторяющихся записей CSV.')
+            logger.info("Удаление повторяющихся записей CSV.")
             self._remove_duplicates()
 
     def _remove_empty_columns(self) -> None:
         """Post-process: Remove empty columns."""
         complex_columns = self._complex_mapping.keys()
-        complex_columns_count = {c: 0 for c in self._data_mapping.keys() if
-                                 re.match('|'.join(fr'^{x}_\d+$' for x in complex_columns), c)}
+        complex_columns_count = {
+            c: 0
+            for c in self._data_mapping.keys()
+            if re.match("|".join(rf"^{x}_\d+$" for x in complex_columns), c)
+        }
 
         # Looking for empty columns
-        with self._open_file(self._file_path, 'r') as f_csv:
+        with self._open_file(self._file_path, "r") as f_csv:
             csv_reader = csv.DictReader(f_csv, self._data_mapping.keys())  # type: ignore
             next(csv_reader, None)  # Skip header
             for row in csv.DictReader(f_csv, self._data_mapping.keys()):  # type: ignore
-                for column_name in complex_columns_count.keys():
-                    if row[column_name] != '':
+                for column_name in complex_columns_count:
+                    if row[column_name] != "":
                         complex_columns_count[column_name] += 1
 
         # Generate new data mapping
@@ -116,14 +141,18 @@ class CSVWriter(FileWriter):
 
         # Rename single complex column - remove postfix numbers
         for column in complex_columns:
-            if f'{column}_1' in new_data_mapping and f'{column}_2' not in new_data_mapping:
-                new_data_mapping[f'{column}_1'] = re.sub(r'\s+\d+$', '', new_data_mapping[f'{column}_1'])
+            if f"{column}_1" in new_data_mapping and f"{column}_2" not in new_data_mapping:
+                new_data_mapping[f"{column}_1"] = re.sub(
+                    r"\s+\d+$", "", new_data_mapping[f"{column}_1"]
+                )
 
         # Populate new csv
-        tmp_csv_name = os.path.splitext(self._file_path)[0] + '.removed-columns.csv'
+        tmp_csv_name = os.path.splitext(self._file_path)[0] + ".removed-columns.csv"
 
-        with self._open_file(tmp_csv_name, 'w') as f_tmp_csv, \
-                self._open_file(self._file_path, 'r') as f_csv:
+        with (
+            self._open_file(tmp_csv_name, "w") as f_tmp_csv,
+            self._open_file(self._file_path, "r") as f_csv,
+        ):
             csv_writer = csv.DictWriter(f_tmp_csv, new_data_mapping.keys())  # type: ignore
             csv_reader = csv.DictReader(f_csv, self._data_mapping.keys())  # type: ignore
             csv_writer.writerow(new_data_mapping)  # Write new header
@@ -138,9 +167,11 @@ class CSVWriter(FileWriter):
 
     def _remove_duplicates(self) -> None:
         """Post-process: Remove duplicates."""
-        tmp_csv_name = os.path.splitext(self._file_path)[0] + '.deduplicated.csv'
-        with self._open_file(tmp_csv_name, 'w') as f_tmp_csv, \
-                self._open_file(self._file_path, 'r') as f_csv:
+        tmp_csv_name = os.path.splitext(self._file_path)[0] + ".deduplicated.csv"
+        with (
+            self._open_file(tmp_csv_name, "w") as f_tmp_csv,
+            self._open_file(self._file_path, "r") as f_csv,
+        ):
             seen_records = set()
             for line in f_csv:
                 if line in seen_records:
@@ -175,9 +206,9 @@ class CSVWriter(FileWriter):
         Returns:
             Dictionary for CSV row.
         """
-        data: dict[str, Any] = {k: None for k in self._data_mapping.keys()}
+        data: dict[str, Any] = dict.fromkeys(self._data_mapping.keys())
 
-        item = catalog_doc['result']['items'][0]
+        item = catalog_doc["result"]["items"][0]
 
         try:
             catalog_item = CatalogItem(**item)
@@ -185,65 +216,69 @@ class CSVWriter(FileWriter):
             errors = []
             errors_report = report_from_validation_error(e, item)
             for path, description in errors_report.items():
-                arg = description['invalid_value']
-                error_msg = description['error_message']
-                errors.append(f'[*] Поле: {path}, значение: {arg}, ошибка: {error_msg}')
+                arg = description["invalid_value"]
+                error_msg = description["error_message"]
+                errors.append(f"[*] Поле: {path}, значение: {arg}, ошибка: {error_msg}")
 
-            error_str = 'Ошибка парсинга:\n' + '\n'.join(errors)
-            error_str += '\nДокумент каталога: ' + str(catalog_doc)
+            error_str = "Ошибка парсинга:\n" + "\n".join(errors)
+            error_str += "\nДокумент каталога: " + str(catalog_doc)
             logger.error(error_str)
 
             return {}
 
         # Name, description
         if catalog_item.name_ex:
-            data['name'] = catalog_item.name_ex.primary
-            data['description'] = catalog_item.name_ex.extension
+            data["name"] = catalog_item.name_ex.primary
+            data["description"] = catalog_item.name_ex.extension
         elif catalog_item.name:
-            data['name'] = catalog_item.name
+            data["name"] = catalog_item.name
         elif catalog_item.type in self._type_names:
-            data['name'] = self._type_names[catalog_item.type]
+            data["name"] = self._type_names[catalog_item.type]
 
         # Type
-        data['type'] = catalog_item.type
+        data["type"] = catalog_item.type
 
         # Address
-        data['address'] = catalog_item.address_name
+        data["address"] = catalog_item.address_name
 
         # Reviews
         if catalog_item.reviews:
-            data['general_rating'] = catalog_item.reviews.general_rating
-            data['general_review_count'] = catalog_item.reviews.general_review_count
+            data["general_rating"] = catalog_item.reviews.general_rating
+            data["general_review_count"] = catalog_item.reviews.general_review_count
 
         # Point location
         if catalog_item.point:
-            data['point_lat'] = catalog_item.point.lat  # Latitude (широта)
-            data['point_lon'] = catalog_item.point.lon  # Longitude (долгота)
+            data["point_lat"] = catalog_item.point.lat  # Latitude (широта)
+            data["point_lon"] = catalog_item.point.lon  # Longitude (долгота)
 
         # Address comment
-        data['address_comment'] = catalog_item.address_comment
+        data["address_comment"] = catalog_item.address_comment
 
         # Post code
         if catalog_item.address:
-            data['postcode'] = catalog_item.address.postcode
+            data["postcode"] = catalog_item.address.postcode
 
         # Timezone
         if catalog_item.timezone is not None:
-            data['timezone'] = catalog_item.timezone
+            data["timezone"] = catalog_item.timezone
 
         # Administrative location details
         for div in catalog_item.adm_div:
-            for t in ('country', 'region', 'district_area', 'city', 'district', 'living_area'):
+            for t in ("country", "region", "district_area", "city", "district", "living_area"):
                 if div.type == t:
                     data[t] = div.name
 
         # Item URL
-        data['url'] = catalog_item.url
+        data["url"] = catalog_item.url
 
         # Contacts
         for contact_group in catalog_item.contact_groups:
-            def append_contact(contact_type: str, priority_fields: list[str],
-                               formatter: Callable[[str], str] | None = None) -> None:
+
+            def append_contact(
+                contact_type: str,
+                priority_fields: list[str],
+                formatter: Callable[[str], str] | None = None,
+            ) -> None:
                 """Add contact to `data`.
 
                 Args:
@@ -264,40 +299,54 @@ class CSVWriter(FileWriter):
                     if not contact_value:
                         return
 
-                    data_name = f'{contact_type}_{i}'
+                    data_name = f"{contact_type}_{i}"
                     if data_name in data:
                         data[data_name] = formatter(contact_value) if formatter else contact_value
 
                         # Add comment on demand
                         if self._options.csv.add_comments and contact.comment:
-                            data[data_name] += ' (%s)' % contact.comment
+                            data[data_name] += " (%s)" % contact.comment
 
             # URLs
-            for t in ['website', 'vkontakte', 'whatsapp', 'viber', 'telegram',
-                      'instagram', 'facebook', 'twitter', 'youtube', 'skype']:
-                append_contact(t, ['url'])
+            for t in [
+                "website",
+                "vkontakte",
+                "whatsapp",
+                "viber",
+                "telegram",
+                "instagram",
+                "facebook",
+                "twitter",
+                "youtube",
+                "skype",
+            ]:
+                append_contact(t, ["url"])
 
             # Remove arguments from WhatsApp URL
             for field in data:
-                if field.startswith('whatsapp') and data[field]:
-                    data[field] = data[field].split('?')[0]
+                if field.startswith("whatsapp") and data[field]:
+                    data[field] = data[field].split("?")[0]
 
             # Values
-            for t in ['email', 'skype']:
-                append_contact(t, ['value'])
+            for t in ["email", "skype"]:
+                append_contact(t, ["value"])
 
             # Phone (`value` sometimes has strange crap inside, so we better parse `text`.
             # If no `text` field in contact - use `value` attribute)
-            append_contact('phone', ['text', 'value'],
-                           formatter=lambda x: re.sub(r'^\+7', '8', re.sub(r'[^0-9+]', '', x)))
+            append_contact(
+                "phone",
+                ["text", "value"],
+                formatter=lambda x: re.sub(r"^\+7", "8", re.sub(r"[^0-9+]", "", x)),
+            )
 
         # Schedule
         if catalog_item.schedule:
-            data['schedule'] = catalog_item.schedule.to_str(self._options.csv.join_char,
-                                                            self._options.csv.add_comments)
+            data["schedule"] = catalog_item.schedule.to_str(
+                self._options.csv.join_char, self._options.csv.add_comments
+            )
 
         # Rubrics
         if self._options.csv.add_rubrics:
-            data['rubrics'] = self._options.csv.join_char.join(x.name for x in catalog_item.rubrics)
+            data["rubrics"] = self._options.csv.join_char.join(x.name for x in catalog_item.rubrics)
 
         return data

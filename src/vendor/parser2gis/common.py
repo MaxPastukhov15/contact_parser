@@ -3,38 +3,47 @@ from __future__ import annotations
 import functools
 import sys
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from pydantic import ValidationError
 
 
 def running_linux() -> bool:
     """Determine if current OS is Linux-based."""
-    return sys.platform.startswith('linux')
+    return sys.platform.startswith("linux")
 
 
 def running_windows() -> bool:
     """Determine if current OS is Windows."""
-    return sys.platform.startswith('win')
+    return sys.platform.startswith("win")
 
 
 def running_mac() -> bool:
     """Determine if current OS is MacOS."""
-    return sys.platform.startswith('darwin')
+    return sys.platform.startswith("darwin")
 
 
-def wait_until_finished(timeout: int | None = None,
-                        finished: Callable[[Any], bool] = lambda x: bool(x),
-                        throw_exception: bool = True,
-                        poll_interval: float = 0.1) -> Callable[..., Callable[..., Any]]:
+def wait_until_finished(
+    timeout: int | None = None,
+    finished: Callable[[Any], bool] = lambda x: bool(x),
+    throw_exception: bool = True,
+    poll_interval: float = 0.1,
+) -> Callable[..., Callable[..., Any]]:
     """Decorator that polls wrapped function until time is out or `finished`
     predicate returns `True`.
     """
+
     def outer(func: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(func)
-        def inner(*args, timeout=timeout, finished=finished,
-                  throw_exception=throw_exception,
-                  poll_interval=poll_interval, **kwargs):
+        def inner(
+            *args,
+            timeout=timeout,
+            finished=finished,
+            throw_exception=throw_exception,
+            poll_interval=poll_interval,
+            **kwargs,
+        ):
             call_time = time.time()
             while True:
                 ret = func(*args, **kwargs)
@@ -48,37 +57,38 @@ def wait_until_finished(timeout: int | None = None,
                         return ret
 
                 time.sleep(poll_interval)
+
         return inner
+
     return outer
 
 
-def report_from_validation_error(ex: ValidationError,
-                                 d: dict | None = None) -> dict:
+def report_from_validation_error(ex: ValidationError, d: dict | None = None) -> dict:
     """Generate validation error report for `BaseModel` out of `ValidationError`."""
     values = {}
     for error in ex.errors():
-        msg = error['msg']
-        loc = error['loc']
-        attribute_path = '.'.join([str(location) for location in loc])
+        msg = error["msg"]
+        loc = error["loc"]
+        attribute_path = ".".join([str(location) for location in loc])
 
         if d:
             value = d
             for field in loc:
-                if field == '__root__':
+                if field == "__root__":
                     break
                 if isinstance(value, dict) and field in value:
                     value = value[field]
                 else:
-                    value = '<No value>'
+                    value = "<No value>"
                     break
 
             values[attribute_path] = {
-                'invalid_value': value,
-                'error_message': msg,
+                "invalid_value": value,
+                "error_message": msg,
             }
         else:
             values[attribute_path] = {
-                'error_message': msg,
+                "error_message": msg,
             }
 
     return values
@@ -89,7 +99,7 @@ def unwrap_dot_dict(d: dict) -> dict:
     by dot-concatenated path to their values."""
     output: dict = {}
     for key, value in d.items():
-        path = key.split('.')
+        path = key.split(".")
         target = functools.reduce(lambda d, k: d.setdefault(k, {}), path[:-1], output)
         target[path[-1]] = value
     return output

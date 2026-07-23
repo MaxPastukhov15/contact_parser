@@ -8,7 +8,7 @@ from ..common import floor_to_hundreds
 
 def default_max_records() -> int:
     """Try linear approximation for optimal max records."""
-    max_records = floor_to_hundreds((550 * default_memory_limit() / 1024 - 400))
+    max_records = floor_to_hundreds(550 * default_memory_limit() / 1024 - 400)
     return max_records if max_records > 0 else 1
 
 
@@ -22,6 +22,7 @@ class ParserOptions(BaseModel):
         use_gc: Use Garbage Collector.
         gc_pages_interval: Run Garbage Collector every N pages (if `use_gc` enabled).
     """
+
     model_config = ConfigDict(validate_assignment=True)
 
     skip_404_response: bool = True

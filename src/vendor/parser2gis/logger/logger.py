@@ -6,19 +6,17 @@ import warnings
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .options import LogOptions
     import queue
+
+    from .options import LogOptions
 
 
 # Set third-party loggers level to error
-logging.getLogger('urllib3').setLevel(logging.ERROR)
-logging.getLogger('pychrome').setLevel(logging.FATAL)
-warnings.filterwarnings(
-    action='ignore',
-    module='pychrome'
-)
+logging.getLogger("urllib3").setLevel(logging.ERROR)
+logging.getLogger("pychrome").setLevel(logging.FATAL)
+warnings.filterwarnings(action="ignore", module="pychrome")
 
-_LOGGER_NAME = 'parser-2gis'
+_LOGGER_NAME = "parser-2gis"
 
 
 class QueueHandler(logging.Handler):
@@ -31,8 +29,7 @@ class QueueHandler(logging.Handler):
         self._log_queue.put(log_message)
 
 
-def setup_gui_logger(log_queue: queue.Queue[tuple[str, str]],
-                     options: LogOptions) -> None:
+def setup_gui_logger(log_queue: queue.Queue[tuple[str, str]], options: LogOptions) -> None:
     """Add queue handler to existing logger so it would
     emmit logs to the specified queue.
 

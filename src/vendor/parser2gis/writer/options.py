@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 class CSVOptions(BaseModel):
     """Represent all possible options for CSV Writer."""
+
     model_config = ConfigDict(validate_assignment=True)
 
     add_rubrics: bool = True
@@ -14,18 +15,19 @@ class CSVOptions(BaseModel):
     columns_per_entity: int = Field(3, gt=0, le=5)
     remove_empty_columns: bool = True
     remove_duplicates: bool = True
-    join_char: str = '; '
+    join_char: str = "; "
 
 
 class WriterOptions(BaseModel):
     """Represent all possible options for File Writer."""
+
     model_config = ConfigDict(validate_assignment=True)
 
-    encoding: str = 'utf-8-sig'
+    encoding: str = "utf-8-sig"
     verbose: bool = True
     csv: CSVOptions = CSVOptions()
 
-    @field_validator('encoding')
+    @field_validator("encoding")
     @classmethod
     def encoding_exists(cls, v: str) -> str:
         """Determine if `encoding` exists."""
