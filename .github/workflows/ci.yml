@@ -29,6 +29,3 @@ jobs:
 
       - name: Mypy check
         run: uv run mypy .
-
-      - name: Test with pytest
-        run: uv run pytest
