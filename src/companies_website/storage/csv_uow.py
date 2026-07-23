@@ -1,12 +1,13 @@
 import threading
+
 import polars as pl
 from twisted.internet import threads
+
 from src.companies_website.utils.log_lifecycle import log_lifecycle
 
 
 class CSVUnitOfWork:
-    """
-    Единая точка правды для CSV-файла результатов.
+    """Единая точка правды для CSV-файла результатов.
 
     Причины, по которым это отдельный класс, а не набор функций в спайдере:
       - Раньше `initial_df` читался один раз при старте и больше не обновлялся,
@@ -32,8 +33,7 @@ class CSVUnitOfWork:
         return self.df
 
     def commit(self, results: list[dict], tag: str) -> None:
-        """
-        Мержит новые результаты в self.df, дедуплицирует по 'Адрес сайта'
+        """Мержит новые результаты в self.df, дедуплицирует по 'Адрес сайта'
         (оставляя последнюю запись) и перезаписывает файл целиком.
         Дедуп и запись происходят под одним локом, чтобы конкурентные
         коммиты (checkpoint из потока + final из реактора) не гонялись
@@ -57,8 +57,7 @@ class CSVUnitOfWork:
 
     @log_lifecycle()
     def save_checkpoint(self, scraped_results: list, checkpoint_in_progress: bool) -> bool:
-        """
-        Возвращает актуальное состояние checkpoint_in_progress.
+        """Возвращает актуальное состояние checkpoint_in_progress.
         Раньше при checkpoint_in_progress=True функция ничего не возвращала
         (implicit None), и вызывающий код делал bool(None) == False —
         то есть флаг "чекпоинт идёт" сбрасывался, даже если чекпоинт
@@ -75,9 +74,7 @@ class CSVUnitOfWork:
         scraped_results.clear()
 
         d = threads.deferToThread(self.commit, snapshot, "CHECKPOINT")
-        d.addErrback(
-            lambda f: self.logger.error(f"CHECKPOINT err: {f.getErrorMessage()}")
-        )
+        d.addErrback(lambda f: self.logger.error(f"CHECKPOINT err: {f.getErrorMessage()}"))
 
         return True
 
@@ -88,8 +85,6 @@ class CSVUnitOfWork:
         checkpoint_in_progress: bool,
         spider_closing: bool,
         watchdog_delayed,
-        *args,
-        **kwargs,
     ) -> tuple[bool, bool] | None:
 
         self.logger.info(

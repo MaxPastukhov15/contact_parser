@@ -1,19 +1,24 @@
+from urllib.parse import urlparse
+
 import polars as pl
 import scrapy
-
-from urllib.parse import urlparse
 from scrapy import signals
 from scrapy.exceptions import CloseSpider
-from src.companies_website.extractors import (extract_description, 
-            extract_address, extract_phone, extract_email)
+
 from src.companies_website.discovery import ContactPageFinder, looks_js_rendered
+from src.companies_website.extractors import (
+    extract_address,
+    extract_description,
+    extract_email,
+    extract_phone,
+)
 from src.configs.contacts_config import ContactsFinderSettings
 
 FIELDS = ("Чем занимается", "Адрес офиса", "Номер телефона", "Электронный адрес")
 FIELD_EXTRACTORS = {
-    "Чем занимается": lambda resp, text, log: extract_description(resp, log),
-    "Адрес офиса": lambda resp, text, log: extract_address(text, log),
-    "Номер телефона": lambda resp, text, log: extract_phone(text, log),
+    "Чем занимается": lambda resp, _text, log: extract_description(resp, log),
+    "Адрес офиса": lambda _resp, text, log: extract_address(text, log),
+    "Номер телефона": lambda _resp, text, log: extract_phone(text, log),
     "Электронный адрес": lambda resp, text, log: extract_email(resp, text, log),
 }
 
@@ -45,9 +50,7 @@ class CompanyWebsiteSpider(scrapy.Spider):
                 | pl.col("Электронный адрес").is_null()
             )
         )
-        self.logger.info(
-            f"Found {filtered_df.height} records for updates"
-        )
+        self.logger.info(f"Found {filtered_df.height} records for updates")
 
         for row in filtered_df.iter_rows(named=True):
             url = row["Адрес сайта"].strip()
@@ -73,7 +76,6 @@ class CompanyWebsiteSpider(scrapy.Spider):
 
         self.logger.info(f"Yield loop finished. Total yielded: {self._items_yielded}")
 
-
     def _fill_fields(self, response, csv_data: dict) -> tuple[dict, str, int, int]:
         updated_row = dict(csv_data)
         html_text = response.text
@@ -86,8 +88,9 @@ class CompanyWebsiteSpider(scrapy.Spider):
         after = sum(1 for k in FIELDS if updated_row.get(k))
         return updated_row, html_text, before, after
 
-    def _record_success(self, row: dict, url: str, html_text: str, 
-                        new_fields: int, after: int, tag: str = ""):
+    def _record_success(
+        self, row: dict, url: str, html_text: str, new_fields: int, after: int, tag: str = ""
+    ):
         self._parse_ok += 1
         self._consecutive_errors = 0
         size_kb = len(html_text) // 1024
@@ -125,7 +128,9 @@ class CompanyWebsiteSpider(scrapy.Spider):
 
         final_url = response.url.lower()
         if any(p in final_url for p in ContactsFinderSettings.AUTH_URL_PATTERNS):
-            yield from self._record_skip(dict(csv_data), url, f"[AUTH] Редирект на страницу авторизации: {response.url}")
+            yield from self._record_skip(
+                dict(csv_data), url, f"[AUTH] Редирект на страницу авторизации: {response.url}"
+            )
             return
 
         if response.meta.get("is_contacts_page"):
@@ -148,9 +153,7 @@ class CompanyWebsiteSpider(scrapy.Spider):
             yield from self._record_success(updated_row, url, html_text, new_fields, after)
             return
 
-        self.logger.debug(
-            f"[CONTACTS] {len(contact_pages)} кандидатов: {contact_pages}"
-        )
+        self.logger.debug(f"[CONTACTS] {len(contact_pages)} кандидатов: {contact_pages}")
         for i, contact_url in enumerate(contact_pages):
             self._items_yielded += 1
             yield scrapy.Request(
@@ -177,20 +180,20 @@ class CompanyWebsiteSpider(scrapy.Spider):
         updated_row, html_text, before, after = self._fill_fields(response, csv_data)
         new_fields = after - before
         self._fields_filled += new_fields
-        if contact_index == total_contacts: 
+        if contact_index == total_contacts:
             self._flag_if_suspected_spa(html_text, parent_url, after)
-            
 
         tag = f"+contacts({contact_index}/{total_contacts}) "
-        yield from self._record_success(updated_row, parent_url, html_text, new_fields, after, tag=tag)
+        yield from self._record_success(
+            updated_row, parent_url, html_text, new_fields, after, tag=tag
+        )
 
     def handle_error(self, failure):
         csv_data = failure.request.meta.get("csv_data")
         if csv_data:
             url = csv_data.get("Адрес сайта", failure.request.url)
             self.logger.warning(
-                f"[{self._parse_ok + self._parse_error + 1}] "
-                f"ERR {url}: {failure.getErrorMessage()}"
+                f"[{self._parse_ok + self._parse_error + 1}] ERR {url}: {failure.getErrorMessage()}"
             )
             self._parse_error += 1
             self._consecutive_errors += 1
@@ -202,9 +205,7 @@ class CompanyWebsiteSpider(scrapy.Spider):
                 spider=self,
             )
             if self._consecutive_errors >= 30:
-                self.logger.warning(
-                    f"[SPIDER] {self._consecutive_errors} ошибок подряд — закрываю"
-                )
+                self.logger.warning(f"[SPIDER] {self._consecutive_errors} ошибок подряд — закрываю")
                 raise CloseSpider("too_many_errors")
 
     # ------------------------------------------------------------------

@@ -1,14 +1,17 @@
-from pydantic import BaseModel
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
+
+from pydantic import BaseModel
+
 
 @dataclass
 class DataPaths:
     BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
 
     REGIONS_PATH: Path = BASE_DIR / "maps_data" / "regions.csv"
-    RUBRICS_PATH: Path =  BASE_DIR / "maps_data" / "rubrics.json"
+    RUBRICS_PATH: Path = BASE_DIR / "maps_data" / "rubrics.json"
     ENV_PATH: Path = BASE_DIR / ".env"
+
 
 class ScrapySettings(BaseModel):
     DOWNLOAD_DELAY: float = 0.5

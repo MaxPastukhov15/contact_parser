@@ -1,4 +1,5 @@
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
+
 from src.configs.contacts_config import ContactsFinderSettings
 
 
@@ -13,7 +14,7 @@ class ContactPageFinder:
         for score, url in self._scan_links_scored(response, current_path):
             if url in seen:
                 continue
-            
+
             seen.add(url)
             scored.append((score, url))
 
@@ -25,17 +26,16 @@ class ContactPageFinder:
                     continue
                 seen.add(url)
                 scored.append((self._score_probe_url(url), url))
-            
+
             self.logger.debug(f"[FINDER] После прямого probing: {len(scored)} кандидатов")
 
         scored.sort(key=lambda x: x[0], reverse=True)
         result = [url for _, url in scored[: ContactsFinderSettings.MAX_CONTACT_PAGES]]
-        
+
         self.logger.debug(f"[FINDER] Итого: {result}")
         return result
 
-    def _scan_links_scored(self, response, 
-                current_path: str) -> list[tuple[int, str]]:
+    def _scan_links_scored(self, response, current_path: str) -> list[tuple[int, str]]:
         current_domain = response.meta.get("domain", "")
         candidates = []
         seen = set()
@@ -89,18 +89,16 @@ class ContactPageFinder:
             if link_path == current_path:
                 continue
 
-            if (self._is_php_page(path) 
-                and not self._looks_like_contacts_param(path)):
+            if self._is_php_page(path) and not self._looks_like_contacts_param(path):
                 continue
 
             candidates.append(probe_url)
 
         return candidates
-    
-    def _score_probe_url(self, url: str)-> int:
+
+    def _score_probe_url(self, url: str) -> int:
         parsed = urlparse(url)
-        return self._score_candidate(href_lower="", 
-                link_text="", parsed=parsed)
+        return self._score_candidate(_href_lower="", link_text="", parsed=parsed)
 
     def _is_php_page(self, path: str) -> bool:
         return "index.php" in path or path.endswith(".php")
@@ -113,11 +111,13 @@ class ContactPageFinder:
         for key in params:
             if key.lower() in ContactsFinderSettings.PHP_PAGE_PARAMS:
                 for val in params[key]:
-                    if any(kw in val.lower() for kw in ContactsFinderSettings.CONTACT_PAGE_KEYWORDS):
+                    if any(
+                        kw in val.lower() for kw in ContactsFinderSettings.CONTACT_PAGE_KEYWORDS
+                    ):
                         return True
         return False
 
-    def _score_candidate(self, href_lower: str, link_text: str, parsed) -> int:
+    def _score_candidate(self, _href_lower: str, link_text: str, parsed) -> int:
         score = 0
         path = parsed.path.lower().rstrip("/")
 
@@ -133,7 +133,9 @@ class ContactPageFinder:
             for key in params:
                 if key.lower() in ContactsFinderSettings.PHP_PAGE_PARAMS:
                     for val in params[key]:
-                        if any(kw in val.lower() for kw in ContactsFinderSettings.CONTACT_PAGE_KEYWORDS):
+                        if any(
+                            kw in val.lower() for kw in ContactsFinderSettings.CONTACT_PAGE_KEYWORDS
+                        ):
                             score += 4
                             break
 

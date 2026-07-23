@@ -1,15 +1,15 @@
-import time
 import atexit
-from twisted.internet import reactor
+import time
+
 from scrapy import signals
+from twisted.internet import reactor
 
 from src.companies_website.storage.csv_uow import CSVUnitOfWork
 from src.companies_website.utils.log_lifecycle import log_lifecycle
 
 
 class CsvPersistenceExtension:
-    """
-    Владеет всем жизненным циклом сохранения результатов парсинга:
+    """Владеет всем жизненным циклом сохранения результатов парсинга:
       - слушает item_scraped и request_scheduled, чтобы знать прогресс,
         не требуя от спайдера вести собственные счётчики для этого;
       - буферизует item'ы и периодически чекпоинтит их в CSVUnitOfWork;
@@ -75,10 +75,10 @@ class CsvPersistenceExtension:
         self._watchdog_call = reactor.callLater(self.WATCHDOG_POLL_SECONDS, self._watchdog)
         self.logger.info("[PERSISTENCE] Расширение готово, watchdog запланирован через 30с.")
 
-    def request_scheduled(self, request, spider):
+    def request_scheduled(self, _request, _spider):
         self.requests_yielded += 1
 
-    def item_scraped(self, item, response, spider):
+    def item_scraped(self, item, _response, _spider):
         self.buffer.append(dict(item))
         self.items_done += 1
         self.last_progress_time = time.time()
@@ -86,7 +86,7 @@ class CsvPersistenceExtension:
         if self.items_done % self.checkpoint_interval == 0:
             self._checkpoint()
 
-    def spider_closed(self, spider, reason):
+    def spider_closed(self, _spider, _reason):
         self._cancel_watchdog()
         self._finalize()
 
