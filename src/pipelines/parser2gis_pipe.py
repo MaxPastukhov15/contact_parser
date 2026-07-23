@@ -313,6 +313,11 @@ class Parser2GISPipe:
 
         if self.initial_df is not None:
             result = pl.concat([self.initial_df, result], how="diagonal")
+            result = result.unique(
+                subset=["Электронный адрес", "Номер телефона"],
+                keep="first",
+            )
+
         result.write_csv(self.output_file)
         return result
 

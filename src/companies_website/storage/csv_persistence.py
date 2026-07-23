@@ -75,10 +75,10 @@ class CsvPersistenceExtension:
         self._watchdog_call = reactor.callLater(self.WATCHDOG_POLL_SECONDS, self._watchdog)
         self.logger.info("[PERSISTENCE] Расширение готово, watchdog запланирован через 30с.")
 
-    def request_scheduled(self, _request, _spider):
+    def request_scheduled(self, request, spider):  # noqa: ARG002
         self.requests_yielded += 1
 
-    def item_scraped(self, item, _response, _spider):
+    def item_scraped(self, item, response, spider):  # noqa: ARG002
         self.buffer.append(dict(item))
         self.items_done += 1
         self.last_progress_time = time.time()
@@ -86,7 +86,7 @@ class CsvPersistenceExtension:
         if self.items_done % self.checkpoint_interval == 0:
             self._checkpoint()
 
-    def spider_closed(self, _spider, _reason):
+    def spider_closed(self, spider, reason):  # noqa: ARG002
         self._cancel_watchdog()
         self._finalize()
 

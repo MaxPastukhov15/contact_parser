@@ -1,5 +1,5 @@
-from typing import Optional
 from logging import Logger
+
 from scrapy.http import HtmlResponse
 
 ABOUT_HEADINGS = [
@@ -21,7 +21,7 @@ ABOUT_HEADINGS = [
 ]
 
 
-def extract_description(response: HtmlResponse, logger: Logger) -> Optional[str]:
+def extract_description(response: HtmlResponse, logger: Logger) -> str | None:
     meta_desc: str | None = response.css('meta[name="description"]::attr(content)').get()
     if meta_desc and len(meta_desc.strip()) > 10:
         logger.debug(f"Описание из meta: {meta_desc[:80]}...")

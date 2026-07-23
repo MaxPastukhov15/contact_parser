@@ -68,6 +68,11 @@ disable_error_code = ["import-untyped"]
 [[tool.mypy.overrides]]
 module = "src.vendor.*"
 ignore_errors = true
+disable_error_code = ["import-untyped"]
+
+[[tool.mypy.overrides]]
+module = "src.vendor.*"
+ignore_errors = true
 
 [tool.setuptools]
 package-dir = {"" = "."}

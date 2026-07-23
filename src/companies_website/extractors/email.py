@@ -1,7 +1,7 @@
 import html
 import re
-from typing import Optional
 from logging import Logger
+
 from scrapy.http import HtmlResponse
 
 EMAIL_PATTERN = re.compile(r"[a-zA-Z0-9\-._+]+@[a-zA-Z0-9\-._]+\.[a-zA-Z]{2,6}")
@@ -19,7 +19,7 @@ def decode_obfuscated_text(text: str) -> str:
     return cleaned
 
 
-def extract_email(response: HtmlResponse, text: str, logger: Logger) -> Optional[str]:
+def extract_email(response: HtmlResponse, text: str, logger: Logger) -> str | None:
     if not text:
         return None
 

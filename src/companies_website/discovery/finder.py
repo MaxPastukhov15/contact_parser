@@ -98,7 +98,7 @@ class ContactPageFinder:
 
     def _score_probe_url(self, url: str) -> int:
         parsed = urlparse(url)
-        return self._score_candidate(_href_lower="", link_text="", parsed=parsed)
+        return self._score_candidate(href_lower="", link_text="", parsed=parsed)
 
     def _is_php_page(self, path: str) -> bool:
         return "index.php" in path or path.endswith(".php")
@@ -117,7 +117,7 @@ class ContactPageFinder:
                         return True
         return False
 
-    def _score_candidate(self, _href_lower: str, link_text: str, parsed) -> int:
+    def _score_candidate(self, href_lower: str, link_text: str, parsed) -> int:  # noqa: ARG002
         score = 0
         path = parsed.path.lower().rstrip("/")
 
