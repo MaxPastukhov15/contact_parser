@@ -3,7 +3,7 @@ import threading
 import polars as pl
 from twisted.internet import threads
 
-from src.companies_website.utils import log_lifecycle, MSG
+from src.companies_website.utils import MSG, log_lifecycle
 
 
 class CSVUnitOfWork:
