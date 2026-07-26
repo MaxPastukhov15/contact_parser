@@ -87,6 +87,33 @@ class ContactsFinderSettings:
         "avito.ru",
         "yell.ru",
         "zoon.ru",
+        "vk.link",
+        "tilda.ws",
+        ".tb.ru",
     ]
+
+    IGNORE_EXTENSIONS: ClassVar[tuple] = (
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".svg",
+        ".webp",
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".css",
+        ".js",
+        ".ico",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".mp4",
+        ".mp3",
+        ".zip",
+        ".rar",
+    )
 
     MAX_CONTACT_PAGES: ClassVar[int] = 3

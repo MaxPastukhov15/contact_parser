@@ -12,6 +12,7 @@ from src.companies_website.extractors import (
     extract_email,
     extract_phone,
 )
+from src.companies_website.utils import MSG
 from src.configs.contacts_config import ContactsFinderSettings
 
 FIELDS = ("Чем занимается", "Адрес офиса", "Номер телефона", "Электронный адрес")
@@ -50,7 +51,7 @@ class CompanyWebsiteSpider(scrapy.Spider):
                 | pl.col("Электронный адрес").is_null()
             )
         )
-        self.logger.info(f"Found {filtered_df.height} records for updates")
+        self.logger.info(MSG.found_records(filtered_df.height))
 
         for row in filtered_df.iter_rows(named=True):
             url = row["Адрес сайта"].strip()
@@ -62,7 +63,7 @@ class CompanyWebsiteSpider(scrapy.Spider):
             domain = urlparse(url).netloc.replace("www.", "")
 
             if domain in ContactsFinderSettings.BLOCKED_DOMAINS:
-                self.logger.debug(f"[SKIP] Заблокирован: {domain} — {url}")
+                self.logger.debug(MSG.blocked(domain, url))
                 continue
 
             self._items_yielded += 1
@@ -74,11 +75,16 @@ class CompanyWebsiteSpider(scrapy.Spider):
                 dont_filter=True,
             )
 
-        self.logger.info(f"Yield loop finished. Total yielded: {self._items_yielded}")
+        self.logger.info(MSG.yield_done(self._items_yielded))
 
     def _fill_fields(self, response, csv_data: dict) -> tuple[dict, str, int, int]:
         updated_row = dict(csv_data)
-        html_text = response.text
+
+        try:
+            html_text = response.text
+        except AttributeError:
+            html_text = ""
+
         before = sum(1 for k in FIELDS if updated_row.get(k))
 
         for field, extractor in FIELD_EXTRACTORS.items():
@@ -95,15 +101,14 @@ class CompanyWebsiteSpider(scrapy.Spider):
         self._consecutive_errors = 0
         size_kb = len(html_text) // 1024
         self.logger.info(
-            f"[{self._parse_ok + self._parse_error}] "
-            f"OK {url} {tag}({size_kb}KB,+{new_fields} полей, итого заполнено {after}/4)"
+            MSG.ok(self._parse_ok + self._parse_error, url, tag, size_kb, new_fields, after)
         )
         self._log_progress()
         yield row
 
     def _record_skip(self, row: dict, url: str, reason: str):
         self._parse_error += 1
-        self.logger.warning(f"{reason} для {url} — пропускаем извлечение данных")
+        self.logger.warning(MSG.skip(reason, url))
         self._log_progress()
         yield row
 
@@ -112,7 +117,7 @@ class CompanyWebsiteSpider(scrapy.Spider):
             return
         if looks_js_rendered(html_text):
             self._suspected_spa += 1
-            self.logger.info(f"[SPA?] Подозрение на JS-рендеринг: {url}")
+            self.logger.info(MSG.spa(url))
 
     # ------------------------------------------------------------------
     # Callbacks
@@ -153,7 +158,7 @@ class CompanyWebsiteSpider(scrapy.Spider):
             yield from self._record_success(updated_row, url, html_text, new_fields, after)
             return
 
-        self.logger.debug(f"[CONTACTS] {len(contact_pages)} кандидатов: {contact_pages}")
+        self.logger.debug(MSG.contacts(len(contact_pages), contact_pages))
         for i, contact_url in enumerate(contact_pages):
             self._items_yielded += 1
             yield scrapy.Request(
@@ -192,8 +197,24 @@ class CompanyWebsiteSpider(scrapy.Spider):
         csv_data = failure.request.meta.get("csv_data")
         if csv_data:
             url = csv_data.get("Адрес сайта", failure.request.url)
+            response = getattr(failure.value, "response", None)
+            status = getattr(response, "status", None)
+
+            if status in (403, 503) and not failure.request.meta.get("playwright_retry"):
+                self.logger.info(MSG.retry_pw(url, status))
+                yield scrapy.Request(
+                    url=failure.request.url,
+                    callback=self.parse,
+                    meta={**failure.request.meta, "playwright": True, "playwright_retry": True},
+                    errback=self.handle_error,
+                    dont_filter=True,
+                )
+                return
+
             self.logger.warning(
-                f"[{self._parse_ok + self._parse_error + 1}] ERR {url}: {failure.getErrorMessage()}"
+                MSG.err(
+                    self._parse_ok + self._parse_error + 1, url, status, failure.getErrorMessage()
+                )
             )
             self._parse_error += 1
             self._consecutive_errors += 1
@@ -205,7 +226,7 @@ class CompanyWebsiteSpider(scrapy.Spider):
                 spider=self,
             )
             if self._consecutive_errors >= 30:
-                self.logger.warning(f"[SPIDER] {self._consecutive_errors} ошибок подряд — закрываю")
+                self.logger.warning(MSG.too_many(self._consecutive_errors))
                 raise CloseSpider("too_many_errors")
 
     # ------------------------------------------------------------------
@@ -216,8 +237,12 @@ class CompanyWebsiteSpider(scrapy.Spider):
         done = self._parse_ok + self._parse_error
         if done % 10 == 0:
             self.logger.info(
-                f"--- Прогресс: {done}/{self._items_yielded} обработано, "
-                f"OK={self._parse_ok}, ERR={self._parse_error}, "
-                f"заполнено пол={self._fields_filled}, "
-                f"suspected_spa={self._suspected_spa} ---"
+                MSG.progress(
+                    done,
+                    self._items_yielded,
+                    self._parse_ok,
+                    self._parse_error,
+                    self._fields_filled,
+                    self._suspected_spa,
+                )
             )

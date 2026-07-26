@@ -20,7 +20,8 @@ class ContactPageFinder:
 
         self.logger.debug(f"[FINDER] Из ссылок: {len(scored)} кандидатов")
 
-        if len(scored) < ContactsFinderSettings.MAX_CONTACT_PAGES:
+        high_scored = [s for s, _ in scored if s >= 7]
+        if len(high_scored) < ContactsFinderSettings.MAX_CONTACT_PAGES:
             for url in self._probe_direct_paths(response, current_path):
                 if url in seen:
                     continue
@@ -42,7 +43,11 @@ class ContactPageFinder:
 
         for link in response.css("a"):
             href = link.attrib.get("href", "")
+
             if not href or href.startswith(("#", "javascript:", "mailto:", "tel:")):
+                continue
+
+            if urlparse(href).path.lower().endswith(ContactsFinderSettings.IGNORE_EXTENSIONS):
                 continue
 
             link_text = " ".join(link.css("::text").getall()).strip().lower()

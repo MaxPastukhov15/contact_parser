@@ -3,7 +3,7 @@ import threading
 import polars as pl
 from twisted.internet import threads
 
-from src.companies_website.utils.log_lifecycle import log_lifecycle
+from src.companies_website.utils import log_lifecycle, MSG
 
 
 class CSVUnitOfWork:
@@ -46,14 +46,16 @@ class CSVUnitOfWork:
             new_df = pl.DataFrame(results)
             merged = pl.concat([self.df, new_df], how="diagonal")
             before = merged.height
-            self.df = merged.unique(subset=["Адрес сайта"], keep="last")
+            fill_cols = ["Чем занимается", "Адрес офиса", "Номер телефона", "Электронный адрес"]
+            merged = merged.with_columns(
+                pl.sum_horizontal([pl.col(c).is_not_null() for c in fill_cols]).alias("_fill_score")
+            ).sort("_fill_score")
+
+            self.df = merged.unique(subset=["Адрес сайта"], keep="last").drop("_fill_score")
             removed = before - self.df.height
 
             self.df.write_csv(self.csv_path)
-            self.logger.info(
-                f"[{tag}] Записано {new_df.height} новых, "
-                f"удалено дублей: {removed}, всего в файле: {self.df.height}"
-            )
+            self.logger.info(MSG.written(tag, new_df.height, removed, self.df.height))
 
     @log_lifecycle()
     def save_checkpoint(self, scraped_results: list, checkpoint_in_progress: bool) -> bool:
@@ -88,9 +90,7 @@ class CSVUnitOfWork:
     ) -> tuple[bool, bool] | None:
 
         self.logger.info(
-            f"[FINAL] state: scraped={len(scraped_results)} "
-            f"spider_closing={spider_closing} "
-            f"checkpoint_busy={checkpoint_in_progress}"
+            MSG.final_state(len(scraped_results), spider_closing, checkpoint_in_progress)
         )
         if spider_closing:
             return None

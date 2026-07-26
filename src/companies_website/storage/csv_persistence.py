@@ -5,7 +5,7 @@ from scrapy import signals
 from twisted.internet import reactor
 
 from src.companies_website.storage.csv_uow import CSVUnitOfWork
-from src.companies_website.utils.log_lifecycle import log_lifecycle
+from src.companies_website.utils.log_templates import MSG
 
 
 class CsvPersistenceExtension:
@@ -73,7 +73,7 @@ class CsvPersistenceExtension:
 
         self._register_atexit_safety_net()
         self._watchdog_call = reactor.callLater(self.WATCHDOG_POLL_SECONDS, self._watchdog)
-        self.logger.info("[PERSISTENCE] Расширение готово, watchdog запланирован через 30с.")
+        self.logger.info(MSG.persistence_ready)
 
     def request_scheduled(self, request, spider):  # noqa: ARG002
         self.requests_yielded += 1
@@ -117,7 +117,6 @@ class CsvPersistenceExtension:
             self._watchdog_call.cancel()
         self._watchdog_call = None
 
-    @log_lifecycle()
     def _watchdog(self):
         if self.spider_closing:
             return
@@ -126,15 +125,13 @@ class CsvPersistenceExtension:
         pending = self.requests_yielded - self.items_done
 
         if pending <= 0 and not self.checkpoint_in_progress:
-            self.logger.info("[WATCHDOG] Все запросы обработаны.")
+            # "[WATCHDOG] Все запросы обработаны."
+            self.logger.info(MSG.watchdog_done)
             self._finalize()
             return
 
         if elapsed > self.STALL_FORCE_CLOSE_SECONDS:
-            self.logger.warning(
-                f"[WATCHDOG] Нет прогресса {elapsed:.0f}с — "
-                f"обработано {self.items_done}/{self.requests_yielded}, принудительное закрытие"
-            )
+            self.logger.warning(MSG.watchdog_force(elapsed, self.items_done, self.requests_yielded))
             self._finalize()
             # NB: если на вашей версии Scrapy `crawler.close_spider` отсутствует,
             # замените на `self.crawler.engine.close_spider(self._spider, reason=...)`.
@@ -142,10 +139,7 @@ class CsvPersistenceExtension:
             return
 
         if elapsed > self.STALL_WARNING_SECONDS:
-            self.logger.warning(
-                f"[WATCHDOG] Нет прогресса {elapsed:.0f}с — "
-                f"обработано {self.items_done}/{self.requests_yielded}"
-            )
+            self.logger.warning(MSG.watchdog_warn(elapsed, self.items_done, self.requests_yielded))
             self._checkpoint()
 
         self._watchdog_call = reactor.callLater(self.WATCHDOG_POLL_SECONDS, self._watchdog)
@@ -161,9 +155,9 @@ class CsvPersistenceExtension:
 
         def _emergency_save():
             if self.spider_closing or not self.buffer:
-                self.logger.info("[EXIT] Нечего сохранять аварийно.")
+                self.logger.info(MSG.exit_nothing)
                 return
-            self.logger.info(f"[EXIT] Emergency save: {len(self.buffer)} результатов")
+            self.logger.info(MSG.exit_save(len(self.buffer)))
             snapshot = list(self.buffer)
             self.buffer.clear()
             self.repo.commit(snapshot, "EXIT")
