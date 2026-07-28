@@ -43,6 +43,16 @@ def extract_description(response: HtmlResponse, logger: Logger) -> str | None:
             logger.debug(f"Описание из заголовка: {text[:80]}...")
             return text
 
+    about_text_nodes = response.xpath(
+        f"//descendant::*[{heading_conditions}]/../following-sibling::*//text()"
+    ).getall()
+    about_text_nodes = [t.strip() for t in about_text_nodes if len(t.strip()) > 30]
+    if about_text_nodes:
+        text = " ".join(about_text_nodes[:3])
+        if text:
+            logger.debug(f"Описание из div-контента: {text[:80]}...")
+            return text
+
     first_long_p = response.xpath(
         '//div[contains(@class, "content") or contains(@class, "main") or contains(@class, "about")]'
         "//p[string-length(text()) > 50]/text()"
@@ -51,5 +61,4 @@ def extract_description(response: HtmlResponse, logger: Logger) -> str | None:
         logger.debug(f"Описание из контента: {first_long_p[:80]}...")
         return first_long_p.strip()
 
-    logger.debug("Описание не найдено")
     return None

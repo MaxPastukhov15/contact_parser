@@ -1,14 +1,18 @@
 import re
+from logging import Logger
+
+_ADDRESS_KEYWORDS = (
+    r"(?:г\.|город|ул\.|улица|пр\-|проспект|обл\.|область|д\.|дом|кв\.|офис|корп\.|пер\.|ш\.)"
+)
+_ADDRESS_BODY = r"[А-Яа-я0-9 \t\.,№\-]{3,80}"
+_ADDRESS_PATTERN = re.compile(_ADDRESS_KEYWORDS + r"\s?" + _ADDRESS_BODY)
 
 
-def extract_address(text: str, logger) -> str | None:
-    address_pattern = (
-        r"(?:г\.|город|ул\.|улица|пр\-|проспект|обл\.|область)"
-        r"\s?[А-Яа-я0-9\s\.,№\-]+"
-    )
-    addresses: list[str] = re.findall(address_pattern, text)
-    if addresses:
-        logger.debug(f"Адрес найден: {addresses[0].strip()}")
-        return addresses[0].strip()
+def extract_address(text: str, logger: Logger) -> str | None:
+    match = _ADDRESS_PATTERN.search(text)
+    if match:
+        address = match.group(0).strip()
+        logger.debug(f"Адрес найден: {address}")
+        return address
     logger.debug("Адрес не найден")
     return None

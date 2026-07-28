@@ -33,6 +33,7 @@ class ScrapySettings(BaseModel):
 
     DOWNLOADER_MIDDLEWARES: dict[str, int | None] = {
         "scrapy.downloadermiddlewares.offsite.OffsiteMiddleware": None,
+        "src.companies_website.middlewares.random_ua.RandomUserAgentMiddleware": 400,
     }
 
     EXTENSIONS: dict[str, int] = {
@@ -61,9 +62,19 @@ class ScrapySettings(BaseModel):
     # --- Other settings ---
     ROBOTSTXT_OBEY: bool = False
     RETRY_TIMES: int = 3
-    RETRY_HTTP_CODES: list[int] = [403, 502, 503, 504, 408, 429]
+    RETRY_HTTP_CODES: list[int] = [502, 504, 408, 429]
     HTTPERROR_ALLOWED_CODES: list[int] = [403, 405]
     USER_AGENT: str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    USER_AGENT_LIST: list[str] = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36 OPR/109.0.0.0",
+    ]
     COOKIES_ENABLED: bool = False
     REDIRECT_MAX_TIMES: int = 4
     DNS_TIMEOUT: int = 10

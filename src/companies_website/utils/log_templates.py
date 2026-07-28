@@ -36,6 +36,10 @@ class MSG:
         return f"{reason} для {url} — пропускаем извлечение данных"
 
     @staticmethod
+    def contact_page_skip(status, url):
+        return f"{T.SKIP} Contact page {status} — {url} (страница не найдена)"
+
+    @staticmethod
     def spa(url):
         return f"{T.SPA} Подозрение на JS-рендеринг: {url}"
 
@@ -56,10 +60,11 @@ class MSG:
         return f"{T.SPIDER} {n} ошибок подряд — закрываю"
 
     @staticmethod
-    def progress(done, total, ok, err, fields, spa):
+    def progress(done, total, ok, err, fields, spa, contact_skipped):
         return (
             f"--- Прогресс: {done}/{total} обработано, OK={ok}, ERR={err}, "
-            f"заполнено пол={fields}, suspected_spa={spa} ---"
+            f"заполнено пол={fields}, suspected_spa={spa}, "
+            f"contact_404={contact_skipped} ---"
         )
 
     # csv_persistence

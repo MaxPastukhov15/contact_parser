@@ -1,5 +1,6 @@
 import html
 import re
+from contextlib import suppress
 from logging import Logger
 
 from scrapy.http import HtmlResponse
@@ -16,6 +17,47 @@ def decode_cfemail(cfemail: str) -> str | None:
         return decoded if EMAIL_PATTERN.match(decoded) else None
     except (ValueError, IndexError):
         return None
+
+
+def decode_joomla_mail(raw_html: str) -> str | None:
+    """Декодирует <joomla-hidden-mail> — Joomla кодирует email в base64.
+
+    Пример: <joomla-hidden-mail first="YmFybjU0" last="eWFuZGV4LnJ1"
+            text="YmFybjU0QHlhbmRleC5ydQ==" ...>
+    """
+    import base64
+
+    match = re.search(r"<joomla-hidden-mail\b([^>]*)>", raw_html, re.I)
+    if not match:
+        return None
+
+    attrs_str = match.group(1)
+
+    text_match = re.search(r'text="([^"]*)"', attrs_str, re.I)
+    if text_match and text_match.group(1):
+        try:
+            decoded = base64.b64decode(text_match.group(1)).decode("utf-8")
+            if EMAIL_PATTERN.match(decoded):
+                return decoded
+        except Exception:
+            pass
+
+    first = last = None
+    first_match = re.search(r'first="([^"]*)"', attrs_str, re.I)
+    last_match = re.search(r'last="([^"]*)"', attrs_str, re.I)
+    if first_match and first_match.group(1):
+        with suppress(Exception):
+            first = base64.b64decode(first_match.group(1)).decode("utf-8")
+
+    if last_match and last_match.group(1):
+        with suppress(Exception):
+            last = base64.b64decode(last_match.group(1)).decode("utf-8")
+
+    if first and last:
+        candidate = f"{first}@{last}"
+        if EMAIL_PATTERN.match(candidate):
+            return candidate
+    return None
 
 
 def decode_obfuscated_text(text: str) -> str:
@@ -49,6 +91,13 @@ def extract_email(response: HtmlResponse, text: str, logger: Logger) -> str | No
             found_emails.append(decoded)
 
     if not found_emails:
+        for el in response.css("joomla-hidden-mail").getall():
+            decoded = decode_joomla_mail(el)
+            if decoded:
+                logger.debug(f"[EMAIL] Email декодирован из Joomla hidden mail: {decoded}")
+                found_emails.append(decoded)
+
+    if not found_emails:
         emails = EMAIL_PATTERN.findall(text)
 
         if not emails:
@@ -56,9 +105,9 @@ def extract_email(response: HtmlResponse, text: str, logger: Logger) -> str | No
             emails = EMAIL_PATTERN.findall(decoded)
             if emails:
                 logger.debug("[EMAIL] Email извлечен из декодированного JS/Entities")
-            found_emails.extend(emails)
+        found_emails.extend(emails)
 
-    unique = list(set(found_emails))
+    unique = list(dict.fromkeys(found_emails))
 
     for email in unique:
         if email.startswith(PRIORITY_PREFIXES):
@@ -69,5 +118,4 @@ def extract_email(response: HtmlResponse, text: str, logger: Logger) -> str | No
         logger.debug(f"[EMAIL] Email найден: {unique[0]}")
         return str(unique[0])
 
-    logger.debug("[EMAIL NOT FOUND] Email не найден")
     return None
