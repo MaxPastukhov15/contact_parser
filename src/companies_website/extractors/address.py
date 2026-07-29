@@ -1,4 +1,5 @@
 import re
+from html import unescape
 from logging import Logger
 
 _ADDRESS_KEYWORDS = (
@@ -9,7 +10,7 @@ _ADDRESS_PATTERN = re.compile(_ADDRESS_KEYWORDS + r"\s?" + _ADDRESS_BODY)
 
 
 def extract_address(text: str, logger: Logger) -> str | None:
-    match = _ADDRESS_PATTERN.search(text)
+    match = _ADDRESS_PATTERN.search(unescape(text))
     if match:
         address = match.group(0).strip()
         logger.debug(f"Адрес найден: {address}")

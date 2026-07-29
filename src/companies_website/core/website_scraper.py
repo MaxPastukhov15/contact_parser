@@ -104,6 +104,15 @@ class CompanyWebsiteSpider(scrapy.Spider):
 
         reason = classify_response(response, html_text)
         if reason:
+            if not response.meta.get("playwright_retry"):
+                self.logger.info(MSG.retry_pw(url, response.status))
+                yield scrapy.Request(
+                    url=response.url, callback=self.parse,
+                meta={**response.meta, "playwright": True, "playwright_retry": True},
+                errback=self.handle_error,
+                dont_filter=True,)
+                return
+                
             yield from self.stats.record_skip(dict(csv_data), url, reason)
             return
 

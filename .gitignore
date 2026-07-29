@@ -135,5 +135,3 @@ uploads/*
 # Игнорировать все .log, кроме important.log
 *.log
 !important.log
-
-models/
