@@ -2,48 +2,77 @@ from __future__ import annotations
 
 import functools
 import os
+import shutil
 import socket
+import subprocess
 
 from ..common import running_mac, running_windows
 
 
-@functools.lru_cache
-def locate_chrome_path() -> str | None:
-    """Locate Chrome's executable path."""
+def chrome_candidate_paths() -> list[str]:
+    """Return the list of well-known Chrome executable paths for the current OS.
+
+    Used both for automatic location and for diagnostics.
+    """
+    paths: list[str] = []
+
     if running_windows():
-        app_dirs = []
-
-        # Win paths from WinAPI
-        import ctypes
-
-        csidl = dict(
-            CSIDL_PROGRAM_FILES=38,  # C:\Program Files
-            CSIDL_PROGRAM_FILESX86=42,  # C:\Program Files (x86)
-            CSIDL_LOCAL_APPDATA=28,  # C:\Documents and Settings\<username>\Local Settings\Application Data.
-            CSIDL_COMMON_APPDATA=35,  # C:\Documents and Settings\All Users\Application Data
-            CSIDL_APPDATA=26,  # C:\Users\<username>
-        )
-
-        for _, v in csidl.items():
-            buf = ctypes.create_unicode_buffer(1024)
-            ctypes.windll.shell32.SHGetFolderPathW(None, v, None, 0, buf)  # type: ignore
-            app_dirs.append(buf.value)
-
         env_dirs = [
             "PROGRAMFILES",
             "PROGRAMFILES(X86)",
             "PROGRAMW6432",
             "LOCALAPPDATA",
         ]
-
-        # Win paths from the environment
         for d in env_dirs:
-            if d in os.environ and os.environ[d] not in app_dirs:
-                app_dirs.append(os.environ[d])
+            if d in os.environ and os.environ[d]:
+                paths.append(
+                    os.path.join(os.environ[d], "Google", "Chrome", "Application", "chrome.exe")
+                )
 
-        # Chrome's possible installation locations
-        for path in app_dirs:
-            binary_path = os.path.join(path, "Google", "Chrome", "Application", "chrome.exe")
+    elif running_mac():
+        paths.extend(
+            [
+                "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                os.path.expanduser("~/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
+                "/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary",
+                os.path.expanduser(
+                    "~/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary"
+                ),
+                "/Applications/Google Chrome Beta.app/Contents/MacOS/Google Chrome Beta",
+                "/Applications/Google Chrome Dev.app/Contents/MacOS/Google Chrome Dev",
+                "/Applications/Chromium.app/Contents/MacOS/Chromium",
+                os.path.expanduser("~/Applications/Chromium.app/Contents/MacOS/Chromium"),
+            ]
+        )
+
+    else:
+        app_dirs = [
+            "/usr/bin",
+            "/usr/sbin",
+            "/usr/local/bin",
+            "/usr/local/sbin",
+            "/sbin",
+            "/opt/google/chrome",
+        ]
+        browser_executables = [
+            "google-chrome",
+            "chrome",
+            "chrome-browser",
+            "google-chrome-stable",
+        ]
+        for d in app_dirs:
+            for f in browser_executables:
+                paths.append(os.path.join(d, f))
+
+    return paths
+
+
+@functools.lru_cache
+def locate_chrome_path() -> str | None:
+    """Locate Chrome's executable path."""
+    if running_windows():
+        # Standard installation locations
+        for binary_path in chrome_candidate_paths():
             if os.path.isfile(binary_path):
                 return binary_path
 
@@ -61,41 +90,83 @@ def locate_chrome_path() -> str | None:
                 continue
 
     elif running_mac():
-        for binary_path in (
-            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
-            os.path.expanduser("~/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
-        ):
+        binary_path = _locate_chrome_mac()
+        if binary_path:
+            return binary_path
+
+    else:
+        # Standard installation locations
+        for binary_path in chrome_candidate_paths():
             if os.path.isfile(binary_path):
                 return binary_path
 
-    else:
-        app_dirs = [
-            "/usr/bin",
-            "/usr/sbin",
-            "/usr/local/bin",
-            "/usr/local/sbin",
-            "/sbin",
-            "/opt/google/chrome",
-        ]
-        browser_executables = ["google-chrome", "chrome", "chrome-browser", "google-chrome-stable"]
-        for d in app_dirs:
-            for f in browser_executables:
-                binary_path = os.path.join(d, f)
-                if os.path.isfile(binary_path):
-                    return binary_path
-
         # We also could use 'which' to locate Chrome executable
-        import subprocess
+        for f in ("google-chrome", "chrome", "chrome-browser", "google-chrome-stable"):
+            binary_path = shutil.which(f)
+            if binary_path and os.path.isfile(binary_path):
+                return binary_path
 
-        for f in browser_executables:
-            try:
-                ret_output = subprocess.check_output(["which", f])
-                binary_path = ret_output.decode("utf-8").strip()
+    return None
+
+
+def _locate_chrome_mac() -> str | None:
+    """Locate Chrome's executable on macOS using several lookup strategies."""
+    # Standard installation locations
+    for binary_path in chrome_candidate_paths():
+        if os.path.isfile(binary_path):
+            return binary_path
+
+    # The binary is rarely on PATH, but a symlink could be installed
+    for executable in ("google-chrome", "google-chrome-stable", "chromium"):
+        binary_path = shutil.which(executable)
+        if binary_path and os.path.isfile(binary_path):
+            return binary_path
+
+    # Ask macOS where the app lives (Spotlight, then Launch Services) and
+    # resolve the executable inside the returned `.app` bundle
+    lookups = [
+        ["mdfind", "-onlyin", "/", "kMDItemCFBundleIdentifier == 'com.google.Chrome'"],
+        ["mdfind", "-onlyin", "/", "kMDItemCFBundleIdentifier == 'com.google.Chrome.canary'"],
+        ["mdfind", "-onlyin", "/", "kMDItemCFBundleIdentifier == 'org.chromium.Chromium'"],
+        ["osascript", "-e", 'POSIX path of (path to application id "com.google.Chrome")'],
+        ["osascript", "-e", 'POSIX path of (path to application id "com.google.Chrome.canary")'],
+        ["osascript", "-e", 'POSIX path of (path to application id "org.chromium.Chromium")'],
+    ]
+    for cmd in lookups:
+        binary_path = _resolve_mac_app_binary(cmd)
+        if binary_path:
+            return binary_path
+
+    return None
+
+
+def _resolve_mac_app_binary(cmd: list[str]) -> str | None:
+    """Run a lookup command and return the executable inside the `.app` it points to."""
+    try:
+        output = subprocess.run(cmd, capture_output=True, text=True, timeout=10, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+    for line in output.stdout.splitlines():
+        app_dir = line.strip().rstrip("/")
+        if not app_dir:
+            continue
+
+        exec_dir = os.path.join(app_dir, "Contents", "MacOS")
+        exec_name = os.path.basename(app_dir).replace(".app", "")
+        if exec_name:
+            binary_path = os.path.join(exec_dir, exec_name)
+            if os.path.isfile(binary_path):
+                return binary_path
+
+        # Last resort: any executable file inside Contents/MacOS
+        try:
+            for entry in os.listdir(exec_dir):
+                binary_path = os.path.join(exec_dir, entry)
                 if os.path.isfile(binary_path):
                     return binary_path
-
-            except subprocess.CalledProcessError:
-                pass
+        except OSError:
+            continue
 
     return None
 
