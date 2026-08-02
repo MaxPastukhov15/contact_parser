@@ -14,44 +14,10 @@ class ContactsFinderSettings:
         "обратная",
         "офис",
         "addresses",
+        "компания",
+        "связаться",
+        "реквизиты",
     ]
-
-    CONTACT_PATHS: ClassVar[list] = [
-        "/contacts",
-        "/contact",
-        "/about",
-        "/about-us",
-        "/about/contacts",
-        "/kontakty",
-        "/kontakt",
-        "/o-nas",
-        "/o-kompanii",
-        "/requisites",
-        "/contact-us",
-        "/contact_us",
-        "/index.php?page=contact",
-        "/index.php?page=contacts",
-        "/?page=contact",
-        "/?page=contacts",
-        "/index.php?option=com_contact",
-        "/index.php?cat=contacts",
-        "/info/contacts",
-        "/info/contact",
-        "/company/contacts",
-        "/company/contact",
-    ]
-
-    PHP_PAGE_PARAMS: ClassVar[tuple] = (
-        "page",
-        "id",
-        "view",
-        "option",
-        "cat",
-        "p",
-        "content",
-        "item",
-        "action",
-    )
 
     AUTH_URL_PATTERNS: ClassVar[tuple] = (
         "passport",
@@ -87,6 +53,85 @@ class ContactsFinderSettings:
         "avito.ru",
         "yell.ru",
         "zoon.ru",
+        "vk.link",
+        "tilda.ws",
+        ".tb.ru",
     ]
 
+    IGNORE_EXTENSIONS: ClassVar[tuple] = (
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".svg",
+        ".webp",
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".css",
+        ".js",
+        ".ico",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".mp4",
+        ".mp3",
+        ".zip",
+        ".rar",
+    )
+
+    BLOCKED_DOMAIN_KEYWORDS: ClassVar[tuple] = (
+        "casino",
+        "casinos",
+        "slots",
+        "slot",
+        "gambl",
+        "betting",
+        "bet365",
+        "bookmaker",
+        "poker",
+        "roulette",
+        "jackpot",
+        "казино",
+        "ставк",
+        "букмекер",
+    )
+
+    BLOCKED_CONTENT_KEYWORDS: ClassVar[tuple] = (
+        "казино",
+        "azino",
+        "volcano",
+        "вулкан",
+        "игровые автоматы",
+        "слоты",
+        "джекпот",
+        "букмекерская контора",
+        "ставки на спорт",
+        "online casino",
+        "play casino",
+        "gambling",
+    )
+
+    WAF_BODY_SIGNATURES: ClassVar[tuple[str, ...]] = (
+        "cf-browser-verification",
+        "cf-challenge",
+        "cf_chl",
+        "just a moment",
+        "checking your browser",
+        "please wait while we verify",
+        "enable javascript and cookies",
+        "please turn on javascript",
+        "verify you are human",
+        "hcaptcha",
+        "h-captcha",
+        "smartcaptcha",
+        "smart-captcha",
+        "access denied by",
+        "blocked by",
+        "access to this page has been denied",
+    )
+
+    WAF_URL_PATTERNS: ClassVar[tuple] = ("intruder_", "cf_chl_", "antibot")
     MAX_CONTACT_PAGES: ClassVar[int] = 3

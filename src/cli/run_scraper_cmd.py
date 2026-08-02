@@ -48,32 +48,6 @@ def run_scraper_cmd(args: argparse.Namespace) -> None:
     for key, value in config.scrapy.model_dump().items():
         scrapy_settings.set(key, str(value) if isinstance(value, Path) else value)
 
-    scrapy_settings.set(
-        "TWISTED_REACTOR",
-        "twisted.internet.asyncioreactor.AsyncioSelectorReactor",
-    )
-    scrapy_settings.set(
-        "DOWNLOADER_MIDDLEWARES",
-        {
-            "scrapy.downloadermiddlewares.offsite.OffsiteMiddleware": None,
-            "scrapy_curl_cffi.middlewares.CurlCffiMiddleware": 200,
-        },
-    )
-    scrapy_settings.set(
-        "EXTENSIONS",
-        {
-            "src.companies_website.storage.csv_persistence.CsvPersistenceExtension": 300,
-        },
-    )
-    scrapy_settings.set(
-        "DOWNLOAD_HANDLERS",
-        {
-            "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-            "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-        },
-    )
-    scrapy_settings.set("CURL_CFFI_OPTIONS", {"impersonate": "chrome120"})
-
     process = CrawlerProcess(scrapy_settings)
     crawler = process.create_crawler(CompanyWebsiteSpider)
     process.crawl(crawler, file_path=csv_path)

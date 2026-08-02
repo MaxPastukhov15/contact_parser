@@ -20,11 +20,8 @@ class AppSettings(BaseSettings):
         default=5, description="Сколько страниц выдачи листать для одного запроса"
     )
 
-    SQLITE_DB_PATH: str = Field(default="terra_doc_leads.db", description="Путь к БД SQLite")
     OUTPUT_DIR: Path = Field(default=Path("output"), description="Папка для CSV выгрузок")
-    LOG_LEVEL: str = Field(default="INFO", description="Уровень логирования приложения")
-
-    AUTH_TOKEN_MAX_AGE_HOURS: int = Field(default=6, description="Время жизни кук 2ГИС")
+    LOG_LEVEL: str = Field(default="DEBUG", description="Уровень логирования приложения")
 
     scrapy: ScrapySettings = Field(default_factory=ScrapySettings)
 

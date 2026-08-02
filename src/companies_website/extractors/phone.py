@@ -1,11 +1,13 @@
 import re
+from logging import Logger
+
+_PHONE_PATTERN = re.compile(r"\+?[78]\s?\(?\d{3}\)?\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}")
 
 
-def extract_phone(text: str, logger) -> str | None:
-    phone_pattern = r"\+?[78]\s?\(?\d{3}\)?\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}"
-    phones = re.findall(phone_pattern, text)
-    if phones:
-        raw_phone = re.sub(r"\D", "", phones[0])
+def extract_phone(text: str, logger: Logger) -> str | None:
+    phones = _PHONE_PATTERN.findall(text)
+    for phone in phones:
+        raw_phone = re.sub(r"\D", "", phone)
         if raw_phone.startswith("8"):
             raw_phone = "7" + raw_phone[1:]
         if len(raw_phone) == 11:

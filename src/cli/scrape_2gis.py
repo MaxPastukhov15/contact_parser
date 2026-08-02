@@ -68,7 +68,6 @@ def run_scrape_2gis(args: argparse.Namespace) -> None:
     finally:
         sys.argv = old_argv
 
-    # Optional enrichment pipeline
     if args.pipe:
         log.info("Running contact enrichment pipeline...")
         from src.pipelines.parser2gis_pipe import Parser2GISPipe
