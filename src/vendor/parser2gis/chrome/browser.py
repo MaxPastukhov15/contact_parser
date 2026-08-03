@@ -56,8 +56,9 @@ class ChromeBrowser:
 
         if chrome_options.headless:
             logger.debug("В Chrome установлен в скрытый режим.")
-            self._chrome_cmd.append("--headless")
+            self._chrome_cmd.append("--headless=new")
             self._chrome_cmd.append("--disable-gpu")
+            self._chrome_cmd.append("--window-size=1920,1080")
 
         if chrome_options.disable_images:
             logger.debug("В Chrome отключены изображения.")
