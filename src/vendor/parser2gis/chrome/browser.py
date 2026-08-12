@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from ..common import wait_until_finished
 from ..logger import logger
 from .exceptions import ChromePathNotFound
-from .utils import free_port, locate_chrome_path
+from .utils import chrome_candidate_paths, free_port, locate_chrome_path
 
 if TYPE_CHECKING:
     from .options import ChromeOptions
@@ -28,7 +28,12 @@ class ChromeBrowser:
         )
 
         if not binary_path:
-            raise ChromePathNotFound
+            searched = ", ".join(chrome_candidate_paths())
+            raise ChromePathNotFound(
+                "Chrome браузер не найден. Проверенные пути: "
+                f"{searched}. Установите Google Chrome или укажите путь к "
+                "исполняемому файлу браузера через флаг --chrome.binary_path"
+            )
 
         logger.debug("Запуск Chrome Браузера.")
 
@@ -51,8 +56,9 @@ class ChromeBrowser:
 
         if chrome_options.headless:
             logger.debug("В Chrome установлен в скрытый режим.")
-            self._chrome_cmd.append("--headless")
+            self._chrome_cmd.append("--headless=new")
             self._chrome_cmd.append("--disable-gpu")
+            self._chrome_cmd.append("--window-size=1920,1080")
 
         if chrome_options.disable_images:
             logger.debug("В Chrome отключены изображения.")

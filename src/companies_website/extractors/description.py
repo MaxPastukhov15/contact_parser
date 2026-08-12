@@ -1,6 +1,6 @@
 import re
 from logging import Logger
-from typing import Optional
+
 from scrapy.http import HtmlResponse
 
 ABOUT_HEADINGS = [
@@ -21,6 +21,7 @@ ABOUT_HEADINGS = [
     "Наш профиль",
 ]
 
+
 def _first_sentence(text: str, max_len: int = 500) -> str | None:
     text = re.sub(r"\s+", " ", text).strip().lower()
     if not text:
@@ -32,13 +33,13 @@ def _first_sentence(text: str, max_len: int = 500) -> str | None:
     return text[:max_len].rsplit(" ", 1)[0] + "..."
 
 
-def extract_description(response: HtmlResponse, logger: Logger) -> Optional[str]:
-    meta_desc: Optional[str] = response.css('meta[name="description"]::attr(content)').get()
+def extract_description(response: HtmlResponse, logger: Logger) -> str | None:
+    meta_desc: str | None = response.css('meta[name="description"]::attr(content)').get()
     if meta_desc and len(meta_desc.strip()) > 10:
         logger.debug(f"Описание из meta: {meta_desc[:80]}...")
         return _first_sentence(meta_desc)
 
-    og_desc: Optional[str] = response.css('meta[property="og:description"]::attr(content)').get()
+    og_desc: str | None = response.css('meta[property="og:description"]::attr(content)').get()
     if og_desc and len(og_desc.strip()) > 10:
         logger.debug(f"Описание из og:description: {og_desc[:80]}...")
         return _first_sentence(og_desc)
